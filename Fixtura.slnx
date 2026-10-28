@@ -1,2 +1,7 @@
 <Solution>
+  <Folder Name="/spike/">
+    <Project Path="spike/AlbaGate.Tests/AlbaGate.Tests.csproj" />
+    <Project Path="spike/SampleApp.Inventory/SampleApp.Inventory.csproj" />
+    <Project Path="spike/SampleApp/SampleApp.csproj" />
+  </Folder>
 </Solution>
