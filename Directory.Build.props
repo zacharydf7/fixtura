@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+      <TargetFramework>net10.0</TargetFramework>
+      <Nullable>enable</Nullable>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+      <Authors>Zachary Fry</Authors>
+      <Product>Fixtura</Product>
+  </PropertyGroup>
+
+  <!-- Package details shared by every package. A release sets the version from its git tag. -->
+  <PropertyGroup>
+      <Version>0.1.0-dev</Version>
+      <Copyright>Copyright (c) 2026 Zachary Fry</Copyright>
+      <PackageLicenseExpression>MIT</PackageLicenseExpression>
+      <PackageProjectUrl>https://github.com/zacharydf7/fixtura</PackageProjectUrl>
+      <RepositoryUrl>https://github.com/zacharydf7/fixtura</RepositoryUrl>
+      <PackageTags>aspnetcore;integration-testing;webapplicationfactory;xunit;testing;efcore</PackageTags>
+      <PackageReadmeFile>README.md</PackageReadmeFile>
+      <IncludeSymbols>true</IncludeSymbols>
+      <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+      <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+      <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+</Project>
