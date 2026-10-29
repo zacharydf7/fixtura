@@ -104,6 +104,18 @@ public class DbContextSwapsTests
     }
 
     [Fact]
+    public void ReplaceDbContexts_ShouldThrowTheSameError_WhenAContextInTheAssemblyHasHandRegisteredOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new DbContextOptionsBuilder<ShopContext>().UseSqlServer("Server=unused").Options);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            services.ReplaceDbContexts(typeof(ShopContext).Assembly, db => db.UseInMemoryDatabase("unused")));
+
+        Assert.Contains("can't reach this context", error.Message);
+    }
+
+    [Fact]
     public void ReplaceDbContext_ShouldThrow_WhenTheAppRegistersItsOptionsByHand()
     {
         var services = new ServiceCollection();

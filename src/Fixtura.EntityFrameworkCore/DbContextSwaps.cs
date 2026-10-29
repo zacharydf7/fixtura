@@ -45,7 +45,8 @@ public static class DbContextSwaps
 
         foreach (Type contextType in contextTypes)
         {
-            ReplaceOneMethod.MakeGenericMethod(contextType).Invoke(null, [services, configure, appOptions]);
+            ReplaceOneMethod.MakeGenericMethod(contextType)
+                .Invoke(null, BindingFlags.DoNotWrapExceptions, null, [services, configure, appOptions], null);
         }
 
         return services;
@@ -67,8 +68,7 @@ public static class DbContextSwaps
         ServiceDescriptor options = services.LastOrDefault(descriptor => descriptor.ServiceType == typeof(DbContextOptions<TContext>))
             ?? throw new NothingMatchedException($"ReplaceDbContext<{typeof(TContext).Name}>");
 
-        // Only EF's own registrations build options from the configurations swapped below; options the app registers itself
-        // would silently keep the app's database.
+        // Options the app registers itself never read the configurations swapped below, so the app's database would stay.
         if (options.ImplementationFactory?.Method.DeclaringType != typeof(EntityFrameworkServiceCollectionExtensions))
         {
             throw new InvalidOperationException(

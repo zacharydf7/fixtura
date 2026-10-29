@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Fixtura.EntityFrameworkCore/Fixtura.EntityFrameworkCore.csproj" />
+    <Project Path="src/Fixtura.SqlServer/Fixtura.SqlServer.csproj" />
     <Project Path="src/Fixtura/Fixtura.csproj" />
   </Folder>
   <Folder Name="/tests/">

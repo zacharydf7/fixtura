@@ -155,6 +155,31 @@ test that uses the fixture is skipped with the resource's reason, and no test ha
 also be required, for example in CI, and then the fixture fails instead. Implement `ITestResource` and add it with
 `host.AddResource(...)`.
 
+### SQL Server
+
+The `Fixtura.SqlServer` package adds a SQL Server resource. Each fixture gets its own databases, and they're dropped when
+the fixture is done.
+
+```csharp
+SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+{
+    Source = SqlServerSource.EnvironmentVariableOrLocalDb("TEST_SQLSERVER"),
+    RequiredWhenSet = "TEST_SQLSERVER_REQUIRED"
+});
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Database("Orders")));
+```
+
+- `SqlServerSource.EnvironmentVariableOrLocalDb(name)` takes a server connection string from the variable, or uses
+  LocalDB when it isn't set. `SqlServerSource.LocalDb` always uses LocalDB.
+- `sql.Database("Orders")` names a database with the fixture's prefix. Call it inside the swap's lambda, because the
+  server is only known once the fixture has provisioned it. The app creates the database, for example by running its
+  migrations or `EnsureCreated` at startup.
+- Without a reachable server, every test that uses the fixture is skipped with the reason. Set the `RequiredWhenSet`
+  variable to `true` in CI, and the fixture fails instead.
+- `ReadyTimeout` (5 seconds unless set) is how long to wait for the server, rounded up to whole seconds; it must be
+  positive. A LocalDB instance that isn't running yet can need longer on its first connection.
+- Databases that a killed test run left behind are dropped once they're an hour old.
+
 ## Kestrel and per-test overrides
 
 - `host.Server = ServerKind.Kestrel` runs the app on Kestrel on a free port. `BaseAddress` is where a browser or another
