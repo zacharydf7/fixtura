@@ -101,7 +101,10 @@ public class AlbaGateTests(AlbaApiFixture api) : IClassFixture<AlbaApiFixture>
         using IServiceScope scope = api.Host.Services.CreateScope();
         var inventory = scope.ServiceProvider.GetRequiredService<IInventory>();
 
-        await Assert.ThrowsAsync<SqlException>(inventory.CountAsync);
+        Exception error = await Assert.ThrowsAnyAsync<Exception>(inventory.CountAsync);
+
+        // On Linux the provider calls "server not found" transient and wraps the SqlException.
+        Assert.IsType<SqlException>(error as SqlException ?? error.InnerException);
     }
 
     [Fact]

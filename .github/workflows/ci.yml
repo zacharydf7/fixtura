@@ -20,6 +20,21 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      # Linux requires a SQL container, so a broken server fails CI; Windows uses LocalDB if present, else SQL tests skip.
+      - name: Start SQL Server
+        if: runner.os == 'Linux'
+        run: |
+          SQL_PASSWORD="Fx-$(openssl rand -hex 16)"
+          echo "::add-mask::$SQL_PASSWORD"
+          docker run -d --name sql -p 1433:1433 -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$SQL_PASSWORD" mcr.microsoft.com/mssql/server:2022-latest
+          ready=false
+          for i in $(seq 1 30); do
+            if docker exec sql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SQL_PASSWORD" -Q "SELECT 1"; then ready=true; break; fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then docker logs sql; exit 1; fi
+          echo "FIXTURA_SQLSERVER=Server=localhost,1433;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=true" >> "$GITHUB_ENV"
+          echo "FIXTURA_SQLSERVER_REQUIRED=true" >> "$GITHUB_ENV"
       - run: dotnet test -c Release
 
   # A version tag such as v0.1.0 publishes that version to nuget.org, once the tests pass on both systems.

@@ -1,7 +1,14 @@
 <Solution>
   <Folder Name="/spike/">
     <Project Path="spike/AlbaGate.Tests/AlbaGate.Tests.csproj" />
+    <Project Path="spike/Fixtura.Spike.Tests/Fixtura.Spike.Tests.csproj" />
+    <Project Path="spike/Fixtura.Spike/Fixtura.Spike.csproj" />
     <Project Path="spike/SampleApp.Inventory/SampleApp.Inventory.csproj" />
     <Project Path="spike/SampleApp/SampleApp.csproj" />
+  </Folder>
+  <Folder Name="/spike/AuthApps/">
+    <Project Path="spike/AuthApps/AuthorityJwtApp/AuthorityJwtApp.csproj" />
+    <Project Path="spike/AuthApps/CookieIdentityApp/CookieIdentityApp.csproj" />
+    <Project Path="spike/AuthApps/SymmetricJwtApp/SymmetricJwtApp.csproj" />
   </Folder>
 </Solution>
