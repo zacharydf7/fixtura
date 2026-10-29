@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Compose ASP.NET Core integration-test hosts from reusable features on top of WebApplicationFactory: typed service swaps, settings as objects that replace whole arrays, test users signed in through the app's own JWT or cookie authentication, and infrastructure that skips tests locally and fails them in CI when it is missing. For xUnit v3.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+    <PackageReference Include="xunit.v3.extensibility.core" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fixtura.Tests.Unit" />
+  </ItemGroup>
+
+</Project>

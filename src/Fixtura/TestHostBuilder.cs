@@ -1,0 +1,149 @@
+using Fixtura.Settings;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Fixtura;
+
+/// <summary>Records what a test host changes from production. Nothing runs until the host is built.</summary>
+public sealed class TestHostBuilder
+{
+    private readonly HashSet<Type> _features = [];
+    private readonly List<ITestResource> _resources = [];
+    private readonly List<Action<IServiceCollection>> _serviceSteps = [];
+    private readonly SettingsOverlay _settings = new();
+    private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
+
+    internal TestHostBuilder()
+    {
+        Services = new TestServices(_serviceSteps);
+    }
+
+    // A copy for WithOverrides: the parent's steps, settings and names, but none of its resources, which the parent owns.
+    private TestHostBuilder(TestHostBuilder parent) : this()
+    {
+        _features.UnionWith(parent._features);
+        _serviceSteps.AddRange(parent._serviceSteps);
+        _settings.Merge(parent._settings);
+        _namePrefix = parent._namePrefix;
+        IsOverride = true;
+        Users = parent.Users.Copy();
+        Server = parent.Server;
+    }
+
+    /// <summary>Typed swaps of the app's service registrations.</summary>
+    public TestServices Services { get; }
+
+    /// <summary>How test users sign in to this host.</summary>
+    public TestUsers Users { get; } = new();
+
+    /// <summary>Which server the app runs on; the in-memory <see cref="ServerKind.TestServer"/> unless set.</summary>
+    public ServerKind Server { get; set; } = ServerKind.TestServer;
+
+    internal bool IsOverride { get; }
+
+    /// <summary>
+    /// Adds a reusable feature. Adding the same feature twice runs it once, so features can build on each other.
+    /// </summary>
+    public TestHostBuilder Use<TFeature>() where TFeature : ITestHostFeature, new()
+    {
+        if (_features.Add(typeof(TFeature)))
+        {
+            new TFeature().Configure(this);
+        }
+
+        return this;
+    }
+
+    /// <summary>Adds infrastructure that is provisioned before the first test and disposed after the last.</summary>
+    public TResource AddResource<TResource>(TResource resource) where TResource : ITestResource
+    {
+        if (IsOverride)
+        {
+            throw new InvalidOperationException(
+                "WithOverrides shares the fixture's resources; add resources in the fixture's Configure.");
+        }
+
+        _resources.Add(resource);
+        return resource;
+    }
+
+    /// <summary>
+    /// Overrides settings with an object shaped like appsettings.json. Program.cs sees them before <c>Build()</c>, they win
+    /// over every app source after it, and an array replaces the app's array whole after it. Later calls win.
+    /// </summary>
+    public TestHostBuilder Settings(object settings)
+    {
+        _settings.Merge(SettingsOverlay.FromObject(settings));
+        return this;
+    }
+
+    /// <summary>Overrides settings with JSON shaped like appsettings.json; comments and trailing commas are allowed.</summary>
+    public TestHostBuilder Settings(string json)
+    {
+        _settings.Merge(SettingsOverlay.FromJson(json));
+        return this;
+    }
+
+    /// <summary>
+    /// Changes the app's options after it has bound and post-configured them, so a list can be replaced whole.
+    /// </summary>
+    public TestHostBuilder Options<TOptions>(Action<TOptions> configure) where TOptions : class
+    {
+        _serviceSteps.Add(services => services.PostConfigure(configure));
+        return this;
+    }
+
+    /// <summary>A name no other fixture instance uses, for in-memory databases and similar shared stores.</summary>
+    public string UniqueName(string name) => $"{_namePrefix}_{name}";
+
+    internal TestHostBuilder CopyForOverrides() => new(this);
+
+    internal async Task<string?> ProvisionAsync()
+    {
+        string?[] reasons = await Task.WhenAll(_resources.Select(resource => resource.ProvisionAsync(_namePrefix)));
+        return reasons.FirstOrDefault(reason => reason is not null);
+    }
+
+    internal void Apply(IWebHostBuilder web)
+    {
+        // Host settings become Program.Main arguments, the only configuration an eager read in Program.cs can see.
+        foreach (KeyValuePair<string, string?> setting in _settings.Values)
+        {
+            web.UseSetting(setting.Key, setting.Value);
+        }
+
+        web.ConfigureAppConfiguration(ApplyLateSettings);
+        web.ConfigureTestServices(services =>
+        {
+            foreach (Action<IServiceCollection> step in _serviceSteps)
+            {
+                step(services);
+            }
+
+            Users.Apply(services);
+        });
+    }
+
+    internal async Task DisposeResourcesAsync()
+    {
+        for (int i = _resources.Count - 1; i >= 0; i--)
+        {
+            await _resources[i].DisposeAsync();
+        }
+    }
+
+    private void ApplyLateSettings(WebHostBuilderContext context, IConfigurationBuilder configuration)
+    {
+        if (_settings.ArrayPaths.Count > 0)
+        {
+            for (int i = 0; i < configuration.Sources.Count; i++)
+            {
+                configuration.Sources[i] = new HiddenSectionsSource(configuration.Sources[i], _settings.ArrayPaths);
+            }
+        }
+
+        configuration.AddInMemoryCollection(_settings.Values);
+    }
+}

@@ -1,14 +1,22 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fixtura/Fixtura.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fixtura.Tests.Integration/Fixtura.Tests.Integration.csproj" />
+    <Project Path="tests/Fixtura.Tests.Unit/Fixtura.Tests.Unit.csproj" />
+  </Folder>
+  <Folder Name="/tests/SampleApps/">
+    <Project Path="tests/SampleApps/AuthorityJwtApp/AuthorityJwtApp.csproj" />
+    <Project Path="tests/SampleApps/CookieApp/CookieApp.csproj" />
+    <Project Path="tests/SampleApps/CookieIdentityApp/CookieIdentityApp.csproj" />
+    <Project Path="tests/SampleApps/SampleApp.Inventory/SampleApp.Inventory.csproj" />
+    <Project Path="tests/SampleApps/SampleApp/SampleApp.csproj" />
+    <Project Path="tests/SampleApps/SymmetricJwtApp/SymmetricJwtApp.csproj" />
+  </Folder>
   <Folder Name="/spike/">
     <Project Path="spike/AlbaGate.Tests/AlbaGate.Tests.csproj" />
     <Project Path="spike/Fixtura.Spike.Tests/Fixtura.Spike.Tests.csproj" />
     <Project Path="spike/Fixtura.Spike/Fixtura.Spike.csproj" />
-    <Project Path="spike/SampleApp.Inventory/SampleApp.Inventory.csproj" />
-    <Project Path="spike/SampleApp/SampleApp.csproj" />
-  </Folder>
-  <Folder Name="/spike/AuthApps/">
-    <Project Path="spike/AuthApps/AuthorityJwtApp/AuthorityJwtApp.csproj" />
-    <Project Path="spike/AuthApps/CookieIdentityApp/CookieIdentityApp.csproj" />
-    <Project Path="spike/AuthApps/SymmetricJwtApp/SymmetricJwtApp.csproj" />
   </Folder>
 </Solution>

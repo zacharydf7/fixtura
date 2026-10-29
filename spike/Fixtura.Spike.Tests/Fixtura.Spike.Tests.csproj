@@ -14,10 +14,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fixtura.Spike\Fixtura.Spike.csproj" />
-    <ProjectReference Include="..\SampleApp\SampleApp.csproj" />
-    <ProjectReference Include="..\AuthApps\AuthorityJwtApp\AuthorityJwtApp.csproj" />
-    <ProjectReference Include="..\AuthApps\CookieIdentityApp\CookieIdentityApp.csproj" />
-    <ProjectReference Include="..\AuthApps\SymmetricJwtApp\SymmetricJwtApp.csproj" />
+    <ProjectReference Include="..\..\tests\SampleApps\SampleApp\SampleApp.csproj" />
+    <ProjectReference Include="..\..\tests\SampleApps\AuthorityJwtApp\AuthorityJwtApp.csproj" />
+    <ProjectReference Include="..\..\tests\SampleApps\CookieIdentityApp\CookieIdentityApp.csproj" />
+    <ProjectReference Include="..\..\tests\SampleApps\SymmetricJwtApp\SymmetricJwtApp.csproj" />
   </ItemGroup>
 
 </Project>
