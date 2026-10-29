@@ -16,9 +16,4 @@
     <Project Path="tests/SampleApps/SampleApp/SampleApp.csproj" />
     <Project Path="tests/SampleApps/SymmetricJwtApp/SymmetricJwtApp.csproj" />
   </Folder>
-  <Folder Name="/spike/">
-    <Project Path="spike/AlbaGate.Tests/AlbaGate.Tests.csproj" />
-    <Project Path="spike/Fixtura.Spike.Tests/Fixtura.Spike.Tests.csproj" />
-    <Project Path="spike/Fixtura.Spike/Fixtura.Spike.csproj" />
-  </Folder>
 </Solution>
