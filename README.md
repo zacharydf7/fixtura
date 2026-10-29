@@ -79,6 +79,29 @@ Every typed swap throws `NothingMatchedException` when the app has no matching r
 the test run instead of silently testing the wrong thing. The same swaps exist as `IServiceCollection` extension methods
 for code that builds its own factory.
 
+## Swapping DbContexts
+
+The `Fixtura.EntityFrameworkCore` package points the app's DbContexts at test databases.
+
+```csharp
+host.Services
+    .ReplaceDbContext<OrdersDbContext>(db => db.UseInMemoryDatabase(host.UniqueName("Orders")))
+    .ReplaceDbContext<AuditedDbContext>(db => db.UseInMemoryDatabase(host.UniqueName("Audit")), AppDbOptions.Keep)
+    .ReplaceDbContexts(typeof(SomeLibraryType).Assembly, db => db.UseInMemoryDatabase(host.UniqueName("Library")));
+```
+
+- One call works for every registration shape: `AddDbContext`, `AddDbContextPool`, `AddDbContextFactory` and
+  `AddPooledDbContextFactory`. Only the options configuration is replaced, so the app's lifetimes and pooling stay.
+- `AppDbOptions.Drop` (the default) configures the context from scratch. `AppDbOptions.Keep` still runs the app's own
+  configuration, such as interceptors, and replaces only the database provider. If the app's configuration throws, for
+  example on a missing connection string, supply the value with `host.Settings`.
+- `ReplaceDbContexts(assembly, ...)` reaches every registered context whose type is declared in that assembly, including
+  ones a library keeps internal.
+- A swap throws when the context's options are registered by hand rather than through EF's `Add...` methods, because it
+  couldn't reach them and the tests would run against the app's database.
+- Name in-memory databases with `host.UniqueName(...)`, so fixtures don't share data. An override from `WithOverrides`
+  gets the same names, so it shares its fixture's data.
+
 ## Settings
 
 ```csharp
