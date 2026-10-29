@@ -16,14 +16,30 @@ public sealed class TestHostBuilder
     private readonly SettingsOverlay _settings = new();
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
 
+    private readonly bool _isOverride;
+
     public TestHostBuilder()
     {
         Services = new TestServices(_serviceSteps);
     }
 
+    // A copy for WithOverrides: the parent's steps, settings and names, but none of its resources, which the parent owns.
+    private TestHostBuilder(TestHostBuilder parent) : this()
+    {
+        _features.UnionWith(parent._features);
+        _serviceSteps.AddRange(parent._serviceSteps);
+        _settings.Merge(parent._settings);
+        _namePrefix = parent._namePrefix;
+        _isOverride = true;
+        Users = parent.Users.Copy();
+        Server = parent.Server;
+    }
+
     public TestServices Services { get; }
 
     public TestUsers Users { get; } = new();
+
+    public ServerKind Server { get; set; } = ServerKind.TestServer;
 
     // Adding the same feature twice runs it once, so features can depend on each other freely.
     public TestHostBuilder Use<TFeature>() where TFeature : ITestHostFeature, new()
@@ -38,6 +54,11 @@ public sealed class TestHostBuilder
 
     public TResource AddResource<TResource>(TResource resource) where TResource : ITestResource
     {
+        if (_isOverride)
+        {
+            throw new InvalidOperationException("WithOverrides shares the fixture's resources; add resources in the fixture's Configure.");
+        }
+
         _resources.Add(resource);
         return resource;
     }
@@ -63,6 +84,10 @@ public sealed class TestHostBuilder
 
     // A name no other fixture instance uses, for in-memory databases and similar shared stores.
     public string UniqueName(string name) => $"{_namePrefix}_{name}";
+
+    internal bool IsOverride => _isOverride;
+
+    internal TestHostBuilder CopyForOverrides() => new(this);
 
     internal async Task<string?> ProvisionAsync()
     {

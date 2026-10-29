@@ -16,9 +16,18 @@ namespace Fixtura.Spike.Users;
 // How test users sign in to this host. Configured in Configure; used by CreateClientAsync(user).
 public sealed class TestUsers
 {
-    private readonly SemaphoreSlim _seeding = new(1, 1);
+    private readonly SemaphoreSlim _seeding;
     private readonly RsaSecurityKey _authorityKey = new(RSA.Create(2048));
     private Type? _seeder;
+
+    public TestUsers() : this(new SemaphoreSlim(1, 1))
+    {
+    }
+
+    private TestUsers(SemaphoreSlim seeding)
+    {
+        _seeding = seeding;
+    }
 
     public UserSignIn SignIn { get; set; } = UserSignIn.AppJwtBearer;
 
@@ -27,6 +36,9 @@ public sealed class TestUsers
         _seeder = typeof(TSeeder);
         return this;
     }
+
+    // Shares the seeding lock, because an override host seeds the same store as its parent.
+    internal TestUsers Copy() => new(_seeding) { SignIn = SignIn, _seeder = _seeder };
 
     internal void Apply(IServiceCollection services)
     {
