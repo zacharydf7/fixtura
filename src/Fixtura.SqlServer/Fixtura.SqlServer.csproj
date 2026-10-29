@@ -9,9 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The SqlClient version EF Core 10's SQL Server provider uses, so an app's own provider isn't forced to move. -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
-    <!-- SqlClient's own dependency, 9.0.11, has known vulnerabilities. -->
+    <!-- The SqlClient version EF Core 10.0.0's SQL Server provider uses, so a consumer's own references never move. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <!-- SqlClient's own Pkcs dependency has known vulnerabilities. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 

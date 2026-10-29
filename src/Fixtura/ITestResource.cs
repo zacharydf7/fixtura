@@ -1,6 +1,9 @@
 namespace Fixtura;
 
-/// <summary>Infrastructure a host needs, such as a database server, provisioned before the first test.</summary>
+/// <summary>
+/// Infrastructure a host needs, such as a database server, provisioned before the first test. It is disposed after the
+/// last test even when an earlier resource was unavailable and it never provisioned.
+/// </summary>
 public interface ITestResource : IAsyncDisposable
 {
     /// <summary>

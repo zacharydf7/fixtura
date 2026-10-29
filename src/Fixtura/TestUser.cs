@@ -15,6 +15,9 @@ public sealed record TestUser
     /// <summary>The user name, issued as the app's name claim.</summary>
     public string Name { get; }
 
+    /// <summary>The id a seeder gives the user when it creates one, for tests that check ownership; null lets the store choose.</summary>
+    public string? Id { get; private init; }
+
     /// <summary>Roles, issued as the app's role claims.</summary>
     public IReadOnlyList<string> Roles { get; private init; } = [];
 
@@ -23,6 +26,9 @@ public sealed record TestUser
 
     /// <summary>Starts a user with this name and no roles or claims.</summary>
     public static TestUser Named(string name) => new(name);
+
+    /// <summary>A copy of this user with this id.</summary>
+    public TestUser WithId(string id) => this with { Id = id };
 
     /// <summary>A copy of this user with the roles added.</summary>
     public TestUser WithRoles(params string[] roles) => this with { Roles = [.. Roles, .. roles] };

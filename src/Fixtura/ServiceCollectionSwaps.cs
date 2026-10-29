@@ -8,12 +8,24 @@ namespace Fixtura;
 /// </summary>
 public static class ServiceCollectionSwaps
 {
-    /// <summary>Replaces every registration of TService, keeping the lifetime the app gave it.</summary>
-    public static IServiceCollection Replace<TService, TImplementation>(this IServiceCollection services)
-        where TService : class where TImplementation : class, TService
+    /// <summary>
+    /// Replaces every registration of TService, keeping the lifetime the app gave it unless <paramref name="lifetime"/> is
+    /// set, for example to keep an in-memory fake's state for the whole host.
+    /// </summary>
+    public static IServiceCollection Replace<TService, TImplementation>(this IServiceCollection services,
+        ServiceLifetime? lifetime = null) where TService : class where TImplementation : class, TService
     {
-        ServiceLifetime lifetime = RemoveAll(services, typeof(TService), serviceKey: null, $"Replace<{typeof(TService).Name}>");
-        services.Add(new ServiceDescriptor(typeof(TService), typeof(TImplementation), lifetime));
+        ServiceLifetime appLifetime = RemoveAll(services, typeof(TService), serviceKey: null, $"Replace<{typeof(TService).Name}>");
+        services.Add(new ServiceDescriptor(typeof(TService), typeof(TImplementation), lifetime ?? appLifetime));
+        return services;
+    }
+
+    /// <summary>Replaces every registration of TService with this one instance, so a test can inspect it.</summary>
+    public static IServiceCollection Replace<TService>(this IServiceCollection services, TService instance)
+        where TService : class
+    {
+        RemoveAll(services, typeof(TService), serviceKey: null, $"Replace<{typeof(TService).Name}>");
+        services.AddSingleton(instance);
         return services;
     }
 

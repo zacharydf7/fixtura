@@ -34,6 +34,41 @@ public sealed class RequiredFixture : TestHost<Program>
     protected override void Configure(TestHostBuilder host) => host.AddResource(new RequiredResource());
 }
 
+public sealed class OrderedResourcesFixture : TestHost<Program>
+{
+    public List<string> Provisioned { get; } = [];
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.AddResource(new OrderedResource("server", Provisioned));
+        host.AddResource(new OrderedResource("migrations", Provisioned));
+    }
+}
+
+public sealed class UnavailableFirstFixture : TestHost<Program>
+{
+    public List<string> Provisioned { get; } = [];
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.AddResource(new UnavailableResource());
+        host.AddResource(new OrderedResource("migrations", Provisioned));
+    }
+}
+
+// Records when it provisions, after a pause, so a parallel provisioner would let a later resource finish first.
+public sealed class OrderedResource(string name, List<string> provisioned) : ITestResource
+{
+    public async Task<string?> ProvisionAsync(string namePrefix)
+    {
+        await Task.Delay(name == "server" ? 50 : 0);
+        provisioned.Add(name);
+        return null;
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}
+
 public sealed class RecordingResource : ITestResource
 {
     public bool Disposed { get; private set; }

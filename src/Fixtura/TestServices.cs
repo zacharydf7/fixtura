@@ -20,8 +20,14 @@ public sealed class TestServices
         return this;
     }
 
-    public TestServices Replace<TService, TImplementation>() where TService : class where TImplementation : class, TService =>
-        Configure(services => services.Replace<TService, TImplementation>());
+    /// <inheritdoc cref="ServiceCollectionSwaps.Replace{TService, TImplementation}(IServiceCollection, ServiceLifetime?)"/>
+    public TestServices Replace<TService, TImplementation>(ServiceLifetime? lifetime = null)
+        where TService : class where TImplementation : class, TService =>
+        Configure(services => services.Replace<TService, TImplementation>(lifetime));
+
+    /// <inheritdoc cref="ServiceCollectionSwaps.Replace{TService}(IServiceCollection, TService)"/>
+    public TestServices Replace<TService>(TService instance) where TService : class =>
+        Configure(services => services.Replace(instance));
 
     public TestServices ReplaceKeyed<TService, TImplementation>(object key)
         where TService : class where TImplementation : class, TService =>

@@ -56,7 +56,10 @@ public sealed class TestHostBuilder
         return this;
     }
 
-    /// <summary>Adds infrastructure that is provisioned before the first test and disposed after the last.</summary>
+    /// <summary>
+    /// Adds infrastructure that is provisioned before the first test and disposed after the last. Resources provision in the
+    /// order they are added, so one can build on another, such as migrations on a database server.
+    /// </summary>
     public TResource AddResource<TResource>(TResource resource) where TResource : ITestResource
     {
         if (IsOverride)
@@ -100,10 +103,19 @@ public sealed class TestHostBuilder
 
     internal TestHostBuilder CopyForOverrides() => new(this);
 
+    // The first unavailable resource skips the rest, which may depend on it.
     internal async Task<string?> ProvisionAsync()
     {
-        string?[] reasons = await Task.WhenAll(_resources.Select(resource => resource.ProvisionAsync(_namePrefix)));
-        return reasons.FirstOrDefault(reason => reason is not null);
+        foreach (ITestResource resource in _resources)
+        {
+            string? reason = await resource.ProvisionAsync(_namePrefix);
+            if (reason is not null)
+            {
+                return reason;
+            }
+        }
+
+        return null;
     }
 
     internal void Apply(IWebHostBuilder web)

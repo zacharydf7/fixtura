@@ -69,7 +69,8 @@ public sealed class ApiFixture : TestHost<Program>
 
 | Call | What it does |
 | --- | --- |
-| `Replace<TService, TImplementation>()` | Replaces every registration of the service, keeping the lifetime the app gave it |
+| `Replace<TService, TImplementation>(lifetime?)` | Replaces every registration of the service, keeping the lifetime the app gave it unless you pass one |
+| `Replace<TService>(instance)` | Replaces every registration with one instance the test can inspect |
 | `ReplaceKeyed<TService, TImplementation>(key)` | Replaces one keyed registration; other keys stay |
 | `Remove<TService>()` | Removes every registration of the service |
 | `RemoveHostedService<THostedService>()` | Removes a hosted service registered with `AddHostedService<T>()` or its factory overload |
@@ -144,8 +145,11 @@ Apps that check each request against their user store need the user to exist the
 host.Users.SeedWith<IdentityUserSeeder<AppUser, IdentityRole>>();
 ```
 
-The seeder runs before each sign-in, one at a time per fixture. `IdentityUserSeeder<TUser, TRole>` brings an ASP.NET
-Identity user to exactly the test user's roles and claims and returns the claims Identity signs in. Override `NewUser` to
+The seeder runs before each sign-in, one at a time per fixture. Give a user a fixed id with `TestUser.WithId(id)` when
+tests check ownership; the seeder then finds the user by id, even after the app renamed it.
+`IdentityUserSeeder<TUser, TRole>` creates an ASP.NET Identity user, or adds the test user's missing roles and claims to
+an existing one, and returns the claims Identity signs in. It never removes roles or claims, because a test may have
+changed the user through the app; give a user that needs fewer roles its own name. Override `NewUser` to
 set your own fields on a user it creates, or implement `ITestUserSeeder` for any other store.
 
 ## Missing infrastructure
@@ -153,7 +157,8 @@ set your own fields on a user it creates, or implement `ITestUserSeeder` for any
 A resource, such as a database server, is provisioned in the fixture's `InitializeAsync`. When it's unavailable, every
 test that uses the fixture is skipped with the resource's reason, and no test has to call a skip helper. A resource can
 also be required, for example in CI, and then the fixture fails instead. Implement `ITestResource` and add it with
-`host.AddResource(...)`.
+`host.AddResource(...)`. Resources provision in the order they are added, so one can build on another, such as
+migrations on a database server; the first unavailable one skips the rest.
 
 ### SQL Server
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using Fixtura.Tests.Integration.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -83,14 +84,40 @@ public class CookieIdentityTests(CookieIdentityFixture api) : IClassFixture<Cook
     }
 
     [Fact]
-    public async Task CreateClientAsync_ShouldDropTheStoredRoles_WhenTheSameNameReturnsWithFewer()
+    public async Task CreateClientAsync_ShouldKeepRolesTheAppGranted_WhenTheSameUserSignsInAgain()
     {
-        await api.CreateClientAsync(TestUser.Named("carol").WithRoles("Auditor"));
+        await api.CreateClientAsync(TestUser.Named("carol"));
+        await Identity.AddToRoleAsync<IdentityUser>(api.Services, "carol", "Auditor");
         HttpClient client = await api.CreateClientAsync(TestUser.Named("carol"));
 
         HttpResponseMessage response = await client.GetAsync("/me", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldKeepClaimsTheAppAdded_WhenTheSameUserSignsInAgain()
+    {
+        await api.CreateClientAsync(TestUser.Named("ivy").WithRoles("Auditor"));
+        await Identity.AddClaimAsync<IdentityUser>(api.Services, "ivy", new Claim("department", "audit"));
+
+        await api.CreateClientAsync(TestUser.Named("ivy").WithRoles("Auditor"));
+
+        IList<Claim> claims = await Identity.GetClaimsAsync<IdentityUser>(api.Services, "ivy");
+        Assert.Contains(claims, claim => claim is { Type: "department", Value: "audit" });
+    }
+
+    [Fact]
+    public async Task WithId_ShouldFindTheUser_WhenTheAppRenamedItAfterItsFirstSignIn()
+    {
+        TestUser user = TestUser.Named("hank").WithId("7c0ffee0-0000-0000-0000-000000000002").WithRoles("Auditor");
+        await api.CreateClientAsync(user);
+        await Identity.RenameAsync<IdentityUser>(api.Services, "hank", "henry");
+
+        HttpClient client = await api.CreateClientAsync(user);
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+        Assert.Equal("henry", me!.Name);
     }
 
     [Fact]
@@ -103,6 +130,16 @@ public class CookieIdentityTests(CookieIdentityFixture api) : IClassFixture<Cook
         HttpResponseMessage response = await client.GetAsync("/me", cancel);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task WithId_ShouldGiveTheStoredUserThatId_WhenTheSeederCreatesTheUser()
+    {
+        await api.CreateClientAsync(TestUser.Named("gina").WithId("7c0ffee0-0000-0000-0000-000000000001").WithRoles("Auditor"));
+
+        IdentityUser? stored = await Identity.FindAsync<IdentityUser>(api.Services, "gina");
+
+        Assert.Equal("7c0ffee0-0000-0000-0000-000000000001", stored?.Id);
     }
 
     [Fact]
@@ -169,6 +206,38 @@ internal static class Identity
         using IServiceScope scope = services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<TUser>>();
         await users.UpdateSecurityStampAsync((await users.FindByNameAsync(name))!);
+    }
+
+    public static async Task AddToRoleAsync<TUser>(IServiceProvider services, string name, string role) where TUser : class
+    {
+        using IServiceScope scope = services.CreateScope();
+        var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        await roles.CreateAsync(new IdentityRole(role));
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<TUser>>();
+        await users.AddToRoleAsync((await users.FindByNameAsync(name))!, role);
+    }
+
+    public static async Task AddClaimAsync<TUser>(IServiceProvider services, string name, Claim claim) where TUser : class
+    {
+        using IServiceScope scope = services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<TUser>>();
+        await users.AddClaimAsync((await users.FindByNameAsync(name))!, claim);
+    }
+
+    public static async Task<IList<Claim>> GetClaimsAsync<TUser>(IServiceProvider services, string name) where TUser : class
+    {
+        using IServiceScope scope = services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<TUser>>();
+        return await users.GetClaimsAsync((await users.FindByNameAsync(name))!);
+    }
+
+    public static async Task RenameAsync<TUser>(IServiceProvider services, string name, string newName) where TUser : class
+    {
+        using IServiceScope scope = services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<TUser>>();
+        TUser user = (await users.FindByNameAsync(name))!;
+        await users.SetUserNameAsync(user, newName);
+        await users.UpdateAsync(user);
     }
 
     public static async Task<TUser?> FindAsync<TUser>(IServiceProvider services, string name) where TUser : class

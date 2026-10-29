@@ -21,6 +21,30 @@ public class ServiceCollectionSwapsTests
     }
 
     [Fact]
+    public void Replace_ShouldUseTheGivenLifetime_WhenOneIsSet()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IClock, SystemClock>();
+
+        services.Replace<IClock, FixedClock>(ServiceLifetime.Singleton);
+
+        Assert.Equal(ServiceLifetime.Singleton, Assert.Single(services).Lifetime);
+    }
+
+    [Fact]
+    public void Replace_ShouldRegisterTheInstance_WhenGivenOne()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IClock, SystemClock>();
+        var clock = new FixedClock();
+
+        services.Replace<IClock>(clock);
+
+        ServiceDescriptor replacement = Assert.Single(services);
+        Assert.Same(clock, replacement.ImplementationInstance);
+    }
+
+    [Fact]
     public void Replace_ShouldReplaceEveryRegistration_WhenTheServiceIsRegisteredTwice()
     {
         var services = new ServiceCollection();
@@ -49,7 +73,7 @@ public class ServiceCollectionSwapsTests
     {
         var services = new ServiceCollection();
 
-        var error = Assert.Throws<NothingMatchedException>(services.Replace<IClock, FixedClock>);
+        var error = Assert.Throws<NothingMatchedException>(() => services.Replace<IClock, FixedClock>());
 
         Assert.Contains("Replace<IClock>", error.Message);
     }

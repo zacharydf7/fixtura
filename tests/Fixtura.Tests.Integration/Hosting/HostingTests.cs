@@ -113,6 +113,26 @@ public class SkipGateTests(UnavailableFixture api) : IClassFixture<UnavailableFi
     }
 }
 
+public class ResourceOrderTests(OrderedResourcesFixture ordered, UnavailableFirstFixture unavailableFirst)
+    : IClassFixture<OrderedResourcesFixture>, IClassFixture<UnavailableFirstFixture>
+{
+    [Fact]
+    public void InitializeAsync_ShouldProvisionResourcesInTheOrderAdded_WhenOneBuildsOnAnother()
+    {
+        List<string> provisioned = ordered.Provisioned;
+
+        Assert.Equal(["server", "migrations"], provisioned);
+    }
+
+    [Fact]
+    public void InitializeAsync_ShouldNotProvisionLaterResources_WhenAnEarlierOneIsUnavailable()
+    {
+        List<string> provisioned = unavailableFirst.Provisioned;
+
+        Assert.Empty(provisioned);
+    }
+}
+
 public class RequiredResourceTests
 {
     [Fact]
