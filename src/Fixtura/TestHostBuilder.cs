@@ -33,6 +33,7 @@ public sealed class TestHostBuilder
         _namePrefix = parent._namePrefix;
         IsOverride = true;
         Users = parent.Users.Copy();
+        Http = parent.Http.Copy();
         Server = parent.Server;
     }
 
@@ -41,6 +42,9 @@ public sealed class TestHostBuilder
 
     /// <summary>How test users sign in to this host.</summary>
     public TestUsers Users { get; } = new();
+
+    /// <summary>Fakes for the app's outbound HTTP clients.</summary>
+    public TestHttp Http { get; } = new();
 
     /// <summary>Which server the app runs on; the in-memory <see cref="ServerKind.TestServer"/> unless set.</summary>
     public ServerKind Server { get; set; } = ServerKind.TestServer;
@@ -149,8 +153,12 @@ public sealed class TestHostBuilder
             }
 
             Users.Apply(services);
+            Http.Apply(services);
         });
     }
+
+    // Responses set while configuring are what a reset brings back.
+    internal void EndConfigure() => Http.SaveBaseline();
 
     // An override resets its parent's resources, because it shares their data.
     internal async Task ResetAsync(IServiceProvider? services)
@@ -159,6 +167,8 @@ public sealed class TestHostBuilder
         {
             await resource.ResetAsync();
         }
+
+        Http.Reset();
 
         if (services is null)
         {

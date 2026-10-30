@@ -82,6 +82,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         }
 
         Configure(_builder);
+        _builder.EndConfigure();
         _skipReason = await _builder.ProvisionAsync();
     }
 
@@ -119,7 +120,8 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     /// <summary>
     /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,
-    /// then the steps added with <see cref="TestHostBuilder.OnReset"/> run. Call it before a test, never while another
+    /// HTTP fakes forget their requests and a test's responses, then the steps added with
+    /// <see cref="TestHostBuilder.OnReset"/> run. Call it before a test, never while another
     /// test uses the same fixture, as tests sharing an assembly fixture can.
     /// </summary>
     public Task ResetDataAsync()
@@ -147,6 +149,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     {
         TestHostBuilder copy = _builder.CopyForOverrides();
         configure(copy);
+        copy.EndConfigure();
         return new OverrideHost(copy, _skipReason);
     }
 

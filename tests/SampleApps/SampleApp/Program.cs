@@ -35,6 +35,10 @@ builder.Services.AddScoped<IOrderPublisher, BusOrderPublisher>();
 builder.Services.AddKeyedSingleton<IPaymentGateway, CardGateway>(PaymentMethods.Card);
 builder.Services.AddKeyedSingleton<IPaymentGateway, InvoiceGateway>(PaymentMethods.Invoice);
 builder.Services.Configure<ShippingOptions>(builder.Configuration.GetSection("Shipping"));
+builder.Services.AddHttpClient("rates", client => client.BaseAddress = new Uri("https://rates.sample.test/"))
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+    .AddHttpMessageHandler(() => new ApiKeyHandler());
+builder.Services.AddHttpClient<TrackingClient>(client => client.BaseAddress = new Uri("https://tracking.sample.test/"));
 builder.Services.AddHostedService<OutboxWorker>();
 builder.Services.AddHostedService(_ => new ReportScheduler());
 
@@ -67,6 +71,11 @@ app.MapGet("/carriers", (IOptions<ShippingOptions> shipping) => shipping.Value.C
 
 app.MapGet("/payments/{method}", (string method, IServiceProvider services) =>
     services.GetRequiredKeyedService<IPaymentGateway>(method).Name);
+
+app.MapGet("/rates/{currency}", (string currency, IHttpClientFactory http) =>
+    http.CreateClient("rates").GetFromJsonAsync<Rate>($"today/{currency}"));
+
+app.MapPost("/parcels/{number}/track", (string number, TrackingClient tracking) => tracking.TrackAsync(number));
 
 if (reportsEnabled)
 {

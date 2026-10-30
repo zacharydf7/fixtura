@@ -1,5 +1,17 @@
 #nullable enable
 abstract Fixtura.TestHost<TProgram>.Configure(Fixtura.TestHostBuilder! host) -> void
+Fixtura.FakeHttpRequest
+Fixtura.FakeHttpRequest.Body.get -> string?
+Fixtura.FakeHttpRequest.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Fixtura.FakeHttpRequest.Json<T>() -> T?
+Fixtura.FakeHttpRequest.Method.get -> System.Net.Http.HttpMethod!
+Fixtura.FakeHttpRequest.Uri.get -> System.Uri!
+Fixtura.HttpFake
+Fixtura.HttpFake.ClientName.get -> string!
+Fixtura.HttpFake.Requests.get -> System.Collections.Generic.IReadOnlyList<Fixtura.FakeHttpRequest!>!
+Fixtura.HttpFake.Respond(System.Func<System.Net.Http.HttpRequestMessage!, System.Net.Http.HttpResponseMessage!>! respond) -> Fixtura.HttpFake!
+Fixtura.HttpFake.Respond(System.Net.Http.HttpMethod! method, string! path, System.Net.HttpStatusCode status, object? json = null) -> Fixtura.HttpFake!
+Fixtura.HttpFake.Respond(System.Net.HttpStatusCode status, object? json = null) -> Fixtura.HttpFake!
 Fixtura.IdentityUserSeeder<TUser, TRole>
 Fixtura.IdentityUserSeeder<TUser, TRole>.IdentityUserSeeder() -> void
 Fixtura.IdentityUserSeeder<TUser, TRole>.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
@@ -28,6 +40,7 @@ Fixtura.TestHost<TProgram>.TestHost() -> void
 Fixtura.TestHost<TProgram>.WithOverrides(System.Action<Fixtura.TestHostBuilder!>! configure) -> Fixtura.TestHost<TProgram!>!
 Fixtura.TestHostBuilder
 Fixtura.TestHostBuilder.AddResource<TResource>(TResource resource) -> TResource
+Fixtura.TestHostBuilder.Http.get -> Fixtura.TestHttp!
 Fixtura.TestHostBuilder.OnReset(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Server.get -> Fixtura.ServerKind
@@ -38,6 +51,11 @@ Fixtura.TestHostBuilder.Settings(string! json) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.UniqueName(string! name) -> string!
 Fixtura.TestHostBuilder.Use<TFeature>() -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Users.get -> Fixtura.TestUsers!
+Fixtura.TestHttp
+Fixtura.TestHttp.Fake(string! clientName) -> Fixtura.HttpFake!
+Fixtura.TestHttp.Fake<TClient>() -> Fixtura.HttpFake!
+Fixtura.TestHttp.Unfaked.get -> Fixtura.UnfakedHttpClients
+Fixtura.TestHttp.Unfaked.set -> void
 Fixtura.TestServices
 Fixtura.TestServices.Configure(System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>! configure) -> Fixtura.TestServices!
 Fixtura.TestServices.Remove<TService>() -> Fixtura.TestServices!
@@ -61,6 +79,9 @@ Fixtura.TestUsers
 Fixtura.TestUsers.SeedWith<TSeeder>() -> Fixtura.TestUsers!
 Fixtura.TestUsers.SignIn.get -> Fixtura.UserSignIn
 Fixtura.TestUsers.SignIn.set -> void
+Fixtura.UnfakedHttpClients
+Fixtura.UnfakedHttpClients.Allow = 0 -> Fixtura.UnfakedHttpClients
+Fixtura.UnfakedHttpClients.Block = 1 -> Fixtura.UnfakedHttpClients
 Fixtura.UserSignIn
 Fixtura.UserSignIn.AppCookie = 1 -> Fixtura.UserSignIn
 Fixtura.UserSignIn.AppJwtBearer = 0 -> Fixtura.UserSignIn

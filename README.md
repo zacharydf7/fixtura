@@ -11,6 +11,7 @@ by hand:
 - **Test users** signed in through the app's own JWT or cookie authentication, events included.
 - **Infrastructure** that skips tests when it's missing locally and fails them in CI, with no skip call in any test.
 - **Data resets** between tests that share a fixture, without recreating databases.
+- **HTTP fakes** for the app's outbound clients, which record what the app sent.
 
 **Status:** pre-release. Nothing is published to nuget.org yet.
 
@@ -153,6 +154,38 @@ claims, and returns the claims Identity signs in. A role or claim that an earlie
 doesn't ask for it, so a user that one test made a `Manager` is a plain user again in the next. Roles and claims the app
 gave the user stay. Override `NewUser` to set your own fields on a user it creates, or implement `ITestUserSeeder` for
 any other store.
+
+## Faking outbound HTTP
+
+Answer the app's `IHttpClientFactory` clients in-process and check what it sent:
+
+```csharp
+public sealed class ApiFixture : TestHost<Program>
+{
+    public HttpFake Rates { get; private set; } = null!;
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        Rates = host.Http.Fake("rates").Respond(HttpMethod.Get, "/today/EUR", HttpStatusCode.OK, new { Value = 1.1 });
+        host.Http.Fake<TrackingClient>().Respond(HttpStatusCode.OK, new { Status = "Delivered" });
+        host.Http.Unfaked = UnfakedHttpClients.Block;
+    }
+}
+
+FakeHttpRequest sent = api.Rates.Requests[^1];
+Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
+```
+
+- `Fake(name)` fakes a named client and `Fake<TClient>()` a typed one; a typed client the app doesn't register throws
+  `NothingMatchedException`. A typed client registered under a name of its own needs `Fake(name)`. Only the primary
+  handler is replaced, so the app's own handlers, such as retries and auth headers, still run.
+- `Respond(method, path, status, json)` answers one route, and `Respond(status, json)` or `Respond(request => ...)`
+  answers everything else. The latest matching response wins. A request nothing answers throws, naming the request.
+- `Requests` lists what the app sent: method, URI, headers and body, with `Json<T>()` to read the body.
+- `Unfaked = UnfakedHttpClients.Block` makes requests through clients without a fake throw instead of reaching the
+  network. Clients the app creates with `new HttpClient()` can't be faked.
+- `ResetDataAsync` clears the recorded requests and brings back the responses set in `Configure`, undoing ones a test
+  set. In `WithOverrides`, faking a client again replaces the fixture's fake for that host only.
 
 ## Missing infrastructure
 
