@@ -12,12 +12,17 @@
       { "files": ["api/**.yml", "api/index.md"] },
       { "files": ["*.md", "toc.yml", "tutorials/**.md", "tutorials/toc.yml", "guides/**.md", "guides/toc.yml"] }
     ],
+    "resource": [
+      { "src": "../assets", "files": ["*.svg"], "dest": "images" }
+    ],
     "dest": "_site",
-    "template": ["default", "modern"],
+    "template": ["default", "modern", "template"],
     "globalMetadata": {
       "_appTitle": "Fixtura",
       "_appName": "Fixtura",
-      "_appFooter": "Fixtura is MIT licensed. <a href=\"https://github.com/zacharydf7/fixtura\">Source on GitHub</a>.",
+      "_appLogoPath": "images/logo.svg",
+      "_appFaviconPath": "images/logo-tile.svg",
+      "_appFooter": "<span class=\"fx-footer\">Fixtura is MIT licensed. <a href=\"https://github.com/zacharydf7/fixtura\">Source on GitHub</a> · <a href=\"https://www.nuget.org/packages/Fixtura\">NuGet</a></span>",
       "_enableSearch": true,
       "_disableContribution": true
     }

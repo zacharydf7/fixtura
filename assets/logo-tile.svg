@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fixtura">
+  <defs>
+    <linearGradient id="fx-tile" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#11284D"/>
+      <stop offset="1" stop-color="#0A1730"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#fx-tile)"/>
+  <svg x="114" y="77" width="284" height="358" viewBox="16 8 68 86">
+    <defs>
+    <linearGradient id="fx-top" x1="40" y1="14" x2="80" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1683FF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="fx-upper" x1="22" y1="14" x2="40" y2="43" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0C4CB0"/>
+      <stop offset="1" stop-color="#0A2E78"/>
+    </linearGradient>
+    <linearGradient id="fx-fold" x1="22" y1="47" x2="40" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13B8C9"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="fx-middle" x1="40" y1="34" x2="70" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B6FE0"/>
+      <stop offset="1" stop-color="#2B95FF"/>
+    </linearGradient>
+    <linearGradient id="fx-lower" x1="22" y1="50" x2="40" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0D4A9E"/>
+      <stop offset="1" stop-color="#0A1F44"/>
+    </linearGradient>
+  </defs>
+  <g stroke-linejoin="round" stroke-width="2.4">
+    <path d="M22 27 L40 14 L40 30 L22 43 Z" fill="url(#fx-upper)" stroke="url(#fx-upper)"/>
+    <path d="M40 14 L78 14 L78 22 L72 30 L40 30 Z" fill="url(#fx-top)" stroke="url(#fx-top)"/>
+    <path d="M22 61 L40 48 L40 84 L36 87 L22 87 Z" fill="url(#fx-lower)" stroke="url(#fx-lower)"/>
+    <path d="M40 34 L67 34 L67 41 L60 48 L40 48 Z" fill="url(#fx-middle)" stroke="url(#fx-middle)"/>
+    <path d="M22 47 L40 34 L40 48 L22 61 Z" fill="url(#fx-fold)" stroke="url(#fx-fold)"/>
+  </g>
+
+  </svg>
+</svg>
