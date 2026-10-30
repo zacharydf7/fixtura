@@ -28,11 +28,16 @@ public static class SqlServerContainer
 
         /// <summary>
         /// The connection string in the environment variable, such as a CI service's server, or a SQL Server container
-        /// from <paramref name="image"/> when the variable isn't set.
+        /// from <paramref name="image"/> when the variable isn't set or is blank.
         /// </summary>
         public static SqlServerSource EnvironmentVariableOrContainer(string name, string image = DefaultImage) =>
             SqlServerSource.From($"{name} or a SQL Server container ({image})",
-                async () => Environment.GetEnvironmentVariable(name) ?? await StartOnceAsync(image));
+                async () =>
+                {
+                    // A blank variable counts as unset: CI leaves a secret blank in a fork's pull request.
+                    string? server = Environment.GetEnvironmentVariable(name);
+                    return string.IsNullOrWhiteSpace(server) ? await StartOnceAsync(image) : server;
+                });
     }
 
     private static Task<string> StartOnceAsync(string image) =>
@@ -40,7 +45,8 @@ public static class SqlServerContainer
 
     private static async Task<string> StartAsync(string image)
     {
-        MsSqlContainer container = new MsSqlBuilder(image).Build();
+        // Testcontainers' default SA password is public. The port stays on all interfaces, so a remote Docker host works.
+        MsSqlContainer container = new MsSqlBuilder(image).WithPassword($"Fx-{Guid.NewGuid():N}").Build();
         await container.StartAsync();
         return container.GetConnectionString();
     }

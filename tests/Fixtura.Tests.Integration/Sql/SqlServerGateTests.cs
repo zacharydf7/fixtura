@@ -117,6 +117,32 @@ public class SqlServerGateTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sql.ProvisionAsync("fixtura_00000000"));
     }
 
+    // Dispose drops every database that starts with the prefix, so any other prefix could drop unrelated databases.
+    [Theory]
+    [InlineData("Sales")]
+    [InlineData("")]
+    [InlineData("fixtura_0000000")]
+    public async Task ProvisionAsync_ShouldThrow_WhenGivenAPrefixTheFixtureDidNotMake(string prefix)
+    {
+        await using SqlServerResource sql = UnreachableServer(required: null);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => sql.ProvisionAsync(prefix));
+
+        Assert.Equal("namePrefix", error.ParamName);
+    }
+
+    // CI leaves a secret blank in a fork's pull request; .NET deletes a variable set to "", so this sets a space.
+    [Fact]
+    public async Task EnvironmentVariableOrLocalDb_ShouldUseLocalDb_WhenTheVariableIsBlank()
+    {
+        string name = $"FIXTURA_TEST_SERVER_{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(name, " ");
+
+        string? server = await SqlServerSource.EnvironmentVariableOrLocalDb(name).ResolveAsync();
+
+        Assert.Equal(await SqlServerSource.LocalDb.ResolveAsync(), server);
+    }
+
     // A unique application name per test, because the resource checks each connection string once per process.
     private static SqlServerResource UnreachableServer(string? required, TimeSpan? readyTimeout = null) =>
         Resource($"{Unreachable};Application Name={Guid.NewGuid():N}", required, readyTimeout ?? TimeSpan.FromSeconds(1));

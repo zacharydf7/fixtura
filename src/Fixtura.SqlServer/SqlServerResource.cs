@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 
 namespace Fixtura;
@@ -9,8 +10,9 @@ namespace Fixtura;
 /// </summary>
 public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 {
-    // Databases an earlier run left behind (a killed test process) are dropped once they are this old.
-    private static readonly TimeSpan LeftoverAge = TimeSpan.FromHours(1);
+    // Databases an earlier run left behind (a killed test process) are dropped once they are this old and nobody is
+    // connected to them, so a long run on a shared server, or one paused in a debugger, keeps its databases.
+    private static readonly TimeSpan LeftoverAge = TimeSpan.FromDays(1);
 
     // One sweep per server and name pattern per process, so parallel fixtures never race to drop the same leftover. Lazy,
     // because GetOrAdd may run its factory more than once.
@@ -32,8 +34,18 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         return new SqlConnectionStringBuilder(server) { InitialCatalog = $"{_prefix}_{name}" }.ConnectionString;
     }
 
+    /// <summary>
+    /// Takes the prefix the fixture passes, such as <c>fixtura_1a2b3c4d</c>, and throws for any other: dispose drops every
+    /// database whose name starts with it.
+    /// </summary>
     public async Task<string?> ProvisionAsync(string namePrefix)
     {
+        if (!Regex.IsMatch(namePrefix, "^fixtura_[0-9a-f]{8}$"))
+        {
+            throw new ArgumentException($"'{namePrefix}' is not a fixture's name prefix, such as fixtura_1a2b3c4d. Dispose drops " +
+                "every database that starts with the prefix, so only the one the fixture passes is accepted.", nameof(namePrefix));
+        }
+
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.ReadyTimeout, TimeSpan.Zero, nameof(SqlServerOptions.ReadyTimeout));
         _prefix = namePrefix;
         (string? server, string? reason) = await ResolveAsync();
@@ -81,7 +93,7 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         }
 
         SqlConnection.ClearAllPools();
-        await DropDatabasesAsync(_server, Like(_prefix) + "[_]%", olderThan: TimeSpan.Zero);
+        await DropDatabasesAsync(_server, Like(_prefix) + "[_]%", olderThan: TimeSpan.Zero, keepInUse: false);
     }
 
     private bool IsRequired()
@@ -131,7 +143,7 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     {
         try
         {
-            await DropDatabasesAsync(server, pattern, olderThan);
+            await DropDatabasesAsync(server, pattern, olderThan, keepInUse: true);
         }
         catch (Exception)
         {
@@ -163,15 +175,17 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 
     private static string Like(string text) => text.Replace("[", "[[]").Replace("_", "[_]").Replace("%", "[%]");
 
-    private static async Task DropDatabasesAsync(string server, string namePattern, TimeSpan olderThan)
+    // Logins without VIEW SERVER STATE see only their current session, so for them the age is the only guard.
+    private static async Task DropDatabasesAsync(string server, string namePattern, TimeSpan olderThan, bool keepInUse)
     {
         const string drop = """
             DECLARE @sql nvarchar(max) = N'';
-            SELECT @sql += N'IF DB_ID(' + QUOTENAME(name, '''') + N') IS NOT NULL BEGIN '
-                + N'ALTER DATABASE ' + QUOTENAME(name) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
-                + N'DROP DATABASE ' + QUOTENAME(name) + N'; END; '
-            FROM sys.databases
-            WHERE name LIKE @pattern AND create_date <= DATEADD(second, -@ageSeconds, GETDATE());
+            SELECT @sql += N'IF DB_ID(' + QUOTENAME(d.name, '''') + N') IS NOT NULL BEGIN '
+                + N'ALTER DATABASE ' + QUOTENAME(d.name) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
+                + N'DROP DATABASE ' + QUOTENAME(d.name) + N'; END; '
+            FROM sys.databases d
+            WHERE d.name LIKE @pattern AND d.create_date <= DATEADD(second, -@ageSeconds, GETDATE())
+                AND (@keepInUse = 0 OR NOT EXISTS (SELECT 1 FROM sys.dm_exec_sessions s WHERE s.database_id = d.database_id));
             EXEC (@sql);
             """;
         await using var connection = new SqlConnection(new SqlConnectionStringBuilder(server) { InitialCatalog = "master" }.ConnectionString);
@@ -179,6 +193,7 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         await using var command = new SqlCommand(drop, connection);
         command.Parameters.AddWithValue("@pattern", namePattern);
         command.Parameters.AddWithValue("@ageSeconds", (int)olderThan.TotalSeconds);
+        command.Parameters.AddWithValue("@keepInUse", keepInUse);
         await command.ExecuteNonQueryAsync();
     }
 }

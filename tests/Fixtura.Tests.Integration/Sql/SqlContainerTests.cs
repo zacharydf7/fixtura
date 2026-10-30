@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SampleApp.Data;
+using Testcontainers.MsSql;
 
 namespace Fixtura.Tests.Integration.Sql;
 
@@ -38,6 +39,19 @@ public class SqlContainerTests(ContainerSqlFixture api) : IClassFixture<Containe
         var connection = new SqlConnectionStringBuilder(orders.Database.GetConnectionString());
         Assert.Equal(("sa", 1), (connection.UserID, await orders.Orders.CountAsync(TestContext.Current.CancellationToken)));
     }
+
+    // Testcontainers' default SA password is public, and the container's port is published on every interface.
+    [Fact]
+    public void Container_ShouldUseItsOwnSaPassword_WhenStarted()
+    {
+        using IServiceScope scope = api.CreateScope();
+        var orders = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
+
+        string password = new SqlConnectionStringBuilder(orders.Database.GetConnectionString()).Password;
+
+        Assert.NotEmpty(password);
+        Assert.NotEqual(MsSqlBuilder.DefaultPassword, password);
+    }
 }
 
 public class SqlContainerGateTests
@@ -63,5 +77,16 @@ public class SqlContainerGateTests
         string? server = await source.ResolveAsync();
 
         Assert.Equal("Server=ci-sql", server);
+    }
+
+    // The image can't start, so the source throws only if the blank variable sent it to the container.
+    [Fact]
+    public async Task EnvironmentVariableOrContainer_ShouldStartAContainer_WhenTheVariableIsBlank()
+    {
+        string name = $"FIXTURA_TEST_SERVER_{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(name, " ");
+        SqlServerSource source = SqlServerSource.EnvironmentVariableOrContainer(name, "fixtura.invalid/no-such-image:1");
+
+        await Assert.ThrowsAnyAsync<Exception>(source.ResolveAsync);
     }
 }

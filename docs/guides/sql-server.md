@@ -10,9 +10,9 @@ they're dropped when the fixture is done.
 | `SqlServerSource` | Server |
 | --- | --- |
 | `LocalDb` | SQL Server LocalDB's default instance, which ships with Visual Studio on Windows. |
-| `EnvironmentVariableOrLocalDb(name)` | The connection string in the variable, or LocalDB when it isn't set. |
+| `EnvironmentVariableOrLocalDb(name)` | The connection string in the variable, or LocalDB when it isn't set or is blank. |
 | `Container(image?)` | A SQL Server container; needs `Fixtura.SqlServer.Testcontainers`. |
-| `EnvironmentVariableOrContainer(name, image?)` | The variable's server, or a container when it isn't set. |
+| `EnvironmentVariableOrContainer(name, image?)` | The variable's server, or a container when it isn't set or is blank. |
 | `From(description, resolveAsync)` | A server from your own code. |
 
 The connection string names a server, not a database.
@@ -25,7 +25,8 @@ The connection string names a server, not a database.
 prefix. Call it inside the swap's lambda, because the server is only known once the fixture has provisioned it. The app
 creates the database, for example by running its migrations or `EnsureCreated` at start-up.
 
-Databases that a killed test run left behind are dropped once they're an hour old.
+Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
+server state, nobody is connected to them.
 
 ## When there's no server
 

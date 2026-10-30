@@ -182,6 +182,27 @@ public class SqlServerResourceTests
         Assert.Equal(1, leftovers);
     }
 
+    // A run paused in a debugger, or still going on a shared server, is connected to its databases.
+    [Fact]
+    public async Task SweepLeftoversAsync_ShouldKeepALeftover_WhenSomeoneIsConnectedToIt()
+    {
+        SqlConnectionStringBuilder server = await ServerOrSkipAsync();
+        string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
+        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+        var inUse = new SqlConnectionStringBuilder(server.ConnectionString) { InitialCatalog = leftover, Pooling = false };
+        await using (var connection = new SqlConnection(inUse.ConnectionString))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+            await SqlServerResource.SweepLeftoversAsync(server.ConnectionString, SqlServerResource.LeftoverPattern("sweep_00000000"),
+                olderThan: TimeSpan.Zero);
+        }
+
+        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        await ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
+        Assert.Equal(1, leftovers);
+    }
+
     private static async Task<SqlConnectionStringBuilder> ServerOrSkipAsync()
     {
         await using var sql = new SqlServerResource(new SqlServerOptions

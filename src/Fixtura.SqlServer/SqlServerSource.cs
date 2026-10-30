@@ -17,9 +17,9 @@ public sealed class SqlServerSource
     /// <summary>SQL Server LocalDB's default instance, which ships with Visual Studio on Windows.</summary>
     public static SqlServerSource LocalDb { get; } = From(@"(localdb)\MSSQLLocalDB", () => Task.FromResult<string?>(LocalDbServer));
 
-    /// <summary>The connection string in the environment variable, or LocalDB when the variable isn't set.</summary>
+    /// <summary>The connection string in the environment variable, or LocalDB when the variable isn't set or is blank.</summary>
     public static SqlServerSource EnvironmentVariableOrLocalDb(string name) =>
-        From($"{name} or LocalDB", () => Task.FromResult<string?>(Environment.GetEnvironmentVariable(name) ?? LocalDbServer));
+        From($"{name} or LocalDB", () => Task.FromResult<string?>(Variable(name) ?? LocalDbServer));
 
     /// <summary>
     /// A server your own code provides, such as one it starts. Return a connection string that names a server, or null when
@@ -29,6 +29,13 @@ public sealed class SqlServerSource
     public static SqlServerSource From(string description, Func<Task<string?>> resolveAsync) => new(resolveAsync, description);
 
     internal Task<string?> ResolveAsync() => _resolve();
+
+    // A blank variable counts as unset: CI leaves a secret blank in a fork's pull request.
+    private static string? Variable(string name)
+    {
+        string? value = Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 
     public override string ToString() => _description;
 }

@@ -237,7 +237,7 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
 ```
 
 - `SqlServerSource.EnvironmentVariableOrLocalDb(name)` takes a server connection string from the variable, or uses
-  LocalDB when it isn't set. `SqlServerSource.LocalDb` always uses LocalDB.
+  LocalDB when it isn't set or is blank. `SqlServerSource.LocalDb` always uses LocalDB.
 - `sql.Database("Orders")` names a database with the fixture's prefix. Call it inside the swap's lambda, because the
   server is only known once the fixture has provisioned it. The app creates the database, for example by running its
   migrations or `EnsureCreated` at startup.
@@ -246,7 +246,8 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
 - `ReadyTimeout` (5 seconds unless set) is how long to wait for the server, rounded up to whole seconds; it must be
   positive. A LocalDB instance that isn't running yet can need longer on its first connection. The server is checked
   once per test run, so an unreachable one costs the timeout once, not once per fixture.
-- Databases that a killed test run left behind are dropped once they're an hour old.
+- Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
+  server state, nobody is connected to them.
 - `SqlServerSource.From(description, async () => ...)` takes a server from your own code. Returning null, or throwing,
   skips the fixture's tests with the reason, or fails them when the `RequiredWhenSet` variable is set.
 
