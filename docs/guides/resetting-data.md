@@ -6,7 +6,7 @@ Tests that share a fixture also share its data. Reset it before each test that n
 
 `ResetDataAsync` resets, in order:
 
-1. Each resource, such as the SQL Server resource.
+1. Each resource, such as the SQL Server or SQLite resource.
 2. The [HTTP fakes](http-fakes.md): recorded requests are cleared, and responses set in `Configure` come back.
 3. The steps added with `host.OnReset(...)`, in the order they were added. Each runs in a scope of its own, so it can
    use scoped services such as a DbContext. They only run once the host has been built.
@@ -28,6 +28,13 @@ The SQL Server resource empties every table in the fixture's databases and resta
 - A sequence restarts when only emptied tables draw from it in a column default, as with EF Core's TPC keys. A sequence
   the app draws from itself, such as EF Core's HiLo, keeps counting, because the app still holds values it reserved.
 - The schema stays, so the app doesn't migrate again.
+
+## SQLite in memory
+
+The [SQLite resource](sqlite.md) empties every table in its in-memory databases, keeping the schema and EF Core's
+migrations history. Full-text tables that store their own text, and spatial indexes, empty with their tables, and
+the app's triggers don't run. Rows the
+model seeds with `HasData` go too; add reference data with `SeedOnReset`.
 
 ## Seeding after a reset
 

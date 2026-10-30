@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Fixtura.EntityFrameworkCore/Fixtura.EntityFrameworkCore.csproj" />
+    <Project Path="src/Fixtura.Sqlite/Fixtura.Sqlite.csproj" />
     <Project Path="src/Fixtura.SqlServer/Fixtura.SqlServer.csproj" />
     <Project Path="src/Fixtura.SqlServer.Testcontainers/Fixtura.SqlServer.Testcontainers.csproj" />
     <Project Path="src/Fixtura/Fixtura.csproj" />

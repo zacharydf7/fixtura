@@ -20,12 +20,13 @@ reference. This README is the short overview.
 ```
 dotnet add package Fixtura
 dotnet add package Fixtura.EntityFrameworkCore
+dotnet add package Fixtura.Sqlite
 dotnet add package Fixtura.SqlServer
 dotnet add package Fixtura.SqlServer.Testcontainers
 ```
 
-`Fixtura` is the core. Add the others when the app uses EF Core, when tests need a real SQL Server, and when that
-server should run in Docker.
+`Fixtura` is the core. Add the others when the app uses EF Core, when tests need a relational database without a
+server, when they need a real SQL Server, and when that server should run in Docker.
 
 ## A fixture per host shape
 
@@ -106,7 +107,8 @@ fixture's next client, scope, reset or disposal once one of the app's background
 
 ## Swapping DbContexts
 
-The `Fixtura.EntityFrameworkCore` package points the app's DbContexts at test databases.
+The `Fixtura.EntityFrameworkCore` package points the app's DbContexts at test databases. EF Core's in-memory provider
+isn't relational, so for a database without a server prefer SQLite in memory, below.
 
 ```csharp
 host.Services
@@ -128,6 +130,21 @@ host.Services
   couldn't reach them and the tests would run against the app's database.
 - Name in-memory databases with `host.UniqueName(...)`, so fixtures don't share data. An override from `WithOverrides`
   gets the same names, so it shares its fixture's data.
+
+### SQLite in memory
+
+```csharp
+SqliteResource sqlite = host.UseSqliteInMemory();
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlite(sqlite.Database("Orders")));
+```
+
+- A relational database with no server, which EF Core's docs recommend over its in-memory provider for tests: keys,
+  constraints and SQL behave as a database does.
+- Each name is a database of its own for the fixture, kept alive by a connection the resource holds, so it doesn't
+  vanish when the app closes its connections, and gone when the fixture is done.
+- `ResetDataAsync` empties its tables, keeping the schema and EF Core's migrations history; the app's triggers don't
+  run. Rows the model seeds with `HasData` go too, so add reference data with `SeedOnReset`.
+- The app's SQLite provider, such as `Microsoft.EntityFrameworkCore.Sqlite`, brings the native library.
 
 ### Migrations, seeding and the model
 
@@ -341,6 +358,8 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifet
   again. System-versioned tables lose their history too, and the app's delete triggers don't run. EF Core's migrations
   history keeps its rows, whatever its table's name, and so do the tables in `SqlServerOptions.KeepOnReset`; list
   reference data the app inserts there. A name that matches no table throws.
+- The SQLite resource empties every table in its in-memory databases, keeping the schema and EF Core's migrations
+  history, without running the app's triggers.
 - `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every EF Core
   in-memory database, so only data seeded with `HasData` is left.
 - `host.OnReset(services => ...)` adds a step of your own, such as clearing what a fake recorded. Steps run after the

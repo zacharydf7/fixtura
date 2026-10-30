@@ -21,6 +21,14 @@ internal static class GuideSnippets
         // </fake-clock>
     }
 
+    public static void Sqlite(TestHostBuilder host)
+    {
+        // <sqlite>
+        SqliteResource sqlite = host.UseSqliteInMemory();
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlite(sqlite.Database("Shop")));
+        // </sqlite>
+    }
+
     public static void Migrations(TestHostBuilder host, TestHost<Program> shop)
     {
         // <migrations>

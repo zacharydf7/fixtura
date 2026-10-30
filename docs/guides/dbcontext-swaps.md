@@ -49,6 +49,11 @@ Each swap replaces the context's options configuration, so a later swap of the s
   EF Core's `HasPendingModelChanges` reports them. One test with it catches a forgotten migration before a deployment
   does.
 
+## Which database
+
+EF Core's in-memory provider doesn't behave like a relational database: it has no foreign keys, constraints or SQL. For
+a relational database without a server, use [SQLite in memory](sqlite.md); for the real thing, [SQL Server](sql-server.md).
+
 ## Naming in-memory databases
 
 Name in-memory databases with `host.UniqueName(...)`, so fixtures don't share data. A host from `WithOverrides` gets the

@@ -5,7 +5,8 @@ Every public type is in the `Fixtura` namespace, whichever package it comes from
 | Package | Types |
 | --- | --- |
 | `Fixtura` | `TestHost<TProgram>`, `TestHostBuilder`, `ITestHostFeature`, the service swaps, settings, test users, HTTP fakes, `ITestResource` |
-| `Fixtura.EntityFrameworkCore` | `DbContextSwaps`, `AppDbOptions`, `InMemoryDatabaseReset` |
+| `Fixtura.EntityFrameworkCore` | `DbContextSwaps`, `AppDbOptions`, `DatabaseSetup`, `InMemoryDatabaseReset` |
+| `Fixtura.Sqlite` | `SqliteResource`, `SqliteTestHostExtensions` |
 | `Fixtura.SqlServer` | `SqlServerResource`, `SqlServerOptions`, `SqlServerSource` |
 | `Fixtura.SqlServer.Testcontainers` | `SqlServerContainer` |
 

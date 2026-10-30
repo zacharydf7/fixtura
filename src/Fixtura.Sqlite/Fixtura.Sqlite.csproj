@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SQLite in-memory databases for Fixtura test hosts: one database per name per fixture, kept alive for the fixture's lifetime, emptied between tests and gone when the fixture is done. A relational stand-in that needs no server.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <!-- Not released yet, so there is no earlier version to validate against. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The version EF Core 10.0.0's SQLite provider uses, without the native library, which the app's provider brings. -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
+  </ItemGroup>
+
+</Project>

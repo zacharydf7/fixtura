@@ -22,6 +22,8 @@
     href: kestrel-and-overrides.md
 - name: Data
   items:
+  - name: SQLite in memory
+    href: sqlite.md
   - name: SQL Server
     href: sql-server.md
   - name: Resetting data

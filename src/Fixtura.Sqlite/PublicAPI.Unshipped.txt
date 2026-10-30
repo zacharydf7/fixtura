@@ -1,0 +1,9 @@
+#nullable enable
+Fixtura.SqliteResource
+Fixtura.SqliteResource.Database(string! name) -> string!
+Fixtura.SqliteResource.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Fixtura.SqliteResource.ProvisionAsync(string! namePrefix) -> System.Threading.Tasks.Task<string?>!
+Fixtura.SqliteResource.ResetAsync() -> System.Threading.Tasks.Task!
+Fixtura.SqliteResource.SqliteResource() -> void
+Fixtura.SqliteTestHostExtensions
+static Fixtura.SqliteTestHostExtensions.UseSqliteInMemory(this Fixtura.TestHostBuilder! host) -> Fixtura.SqliteResource!
