@@ -19,4 +19,8 @@
     <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fixtura.Tests.Integration" />
+  </ItemGroup>
+
 </Project>

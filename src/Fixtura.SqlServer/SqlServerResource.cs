@@ -12,9 +12,9 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     // Databases an earlier run left behind (a killed test process) are dropped once they are this old.
     private static readonly TimeSpan LeftoverAge = TimeSpan.FromHours(1);
 
-    // One sweep per server per process, so parallel fixtures never race to drop the same leftover. Lazy, because GetOrAdd
-    // may run its factory more than once.
-    private static readonly ConcurrentDictionary<string, Lazy<Task>> Sweeps = new();
+    // One sweep per server and name pattern per process, so parallel fixtures never race to drop the same leftover. Lazy,
+    // because GetOrAdd may run its factory more than once.
+    private static readonly ConcurrentDictionary<(string Server, string Pattern), Lazy<Task>> Sweeps = new();
 
     // One reachability check per server per process, so an unreachable server costs the ready timeout once, not per fixture.
     private static readonly ConcurrentDictionary<string, Lazy<Task<string?>>> Checks = new();
@@ -41,7 +41,8 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         if (server is not null && reason is null)
         {
             _server = server;
-            await Sweeps.GetOrAdd(server, _ => new Lazy<Task>(() => SweepLeftoversAsync(server, LeftoverPattern(namePrefix)))).Value;
+            string pattern = LeftoverPattern(namePrefix);
+            await Sweeps.GetOrAdd((server, pattern), _ => new Lazy<Task>(() => SweepLeftoversAsync(server, pattern, LeftoverAge))).Value;
             return null;
         }
 
@@ -91,20 +92,21 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         }
     }
 
-    // Housekeeping only: a leftover another run is dropping, or one this login can't drop, must not fail anyone's tests.
-    private static async Task SweepLeftoversAsync(string server, string pattern)
+    // Housekeeping only: whatever goes wrong, such as a leftover another run is dropping or one this login can't drop, must
+    // not fail anyone's tests.
+    internal static async Task SweepLeftoversAsync(string server, string pattern, TimeSpan olderThan)
     {
         try
         {
-            await DropDatabasesAsync(server, pattern, LeftoverAge);
+            await DropDatabasesAsync(server, pattern, olderThan);
         }
-        catch (SqlException)
+        catch (Exception)
         {
         }
     }
 
     // The kit's own name shape: the prefix's stem, then as many hex digits as the prefix has, so other databases are left alone.
-    private static string LeftoverPattern(string namePrefix)
+    internal static string LeftoverPattern(string namePrefix)
     {
         int stem = namePrefix.LastIndexOf('_') + 1;
         return Like(namePrefix[..stem]) + string.Concat(Enumerable.Repeat("[0-9a-f]", namePrefix.Length - stem)) + "[_]%";

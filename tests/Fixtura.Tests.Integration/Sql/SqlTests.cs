@@ -129,6 +129,53 @@ public class SqlServerResourceTests
         Assert.Equal(0, await ExecuteAsync(probe, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", database));
     }
 
+    // Leftovers get their own name stem here, so a sweep with no age limit can't drop a parallel fixture's databases.
+    [Fact]
+    public async Task SweepLeftoversAsync_ShouldDropOnlyTheKitsNameShape_WhenTheLeftoversAreOldEnough()
+    {
+        SqlConnectionStringBuilder server = await ServerOrSkipAsync();
+        string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
+        string other = $"sweep_other_{Guid.NewGuid().ToString("N")[..8]}";
+        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+        await ExecuteAsync(server, $"CREATE DATABASE [{other}]", other);
+
+        await SqlServerResource.SweepLeftoversAsync(server.ConnectionString, SqlServerResource.LeftoverPattern("sweep_00000000"),
+            olderThan: TimeSpan.Zero);
+
+        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        int others = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", other);
+        await ExecuteAsync(server, $"DROP DATABASE [{other}]", other);
+        Assert.Equal((0, 1), (leftovers, others));
+    }
+
+    [Fact]
+    public async Task SweepLeftoversAsync_ShouldKeepALeftover_WhenItIsYoungerThanTheAge()
+    {
+        SqlConnectionStringBuilder server = await ServerOrSkipAsync();
+        string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
+        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+
+        await SqlServerResource.SweepLeftoversAsync(server.ConnectionString, SqlServerResource.LeftoverPattern("sweep_00000000"),
+            olderThan: TimeSpan.FromHours(1));
+
+        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        await ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
+        Assert.Equal(1, leftovers);
+    }
+
+    private static async Task<SqlConnectionStringBuilder> ServerOrSkipAsync()
+    {
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
+            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            ReadyTimeout = TimeSpan.FromSeconds(15)
+        });
+        string? unavailable = await sql.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        Assert.SkipWhen(unavailable is not null, unavailable ?? "");
+        return new SqlConnectionStringBuilder(sql.Database("Unused")) { InitialCatalog = "" };
+    }
+
     private static async Task<int> ExecuteAsync(SqlConnectionStringBuilder server, string sql, string database)
     {
         var master = new SqlConnectionStringBuilder(server.ConnectionString) { InitialCatalog = "master" };
