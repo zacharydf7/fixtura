@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+
 namespace Fixtura.Tests.Integration.Sql;
 
 // The resource's own skip-or-fail decision, against a server address that refuses connections, so no server is needed.
@@ -49,6 +52,22 @@ public class SqlServerGateTests
     }
 
     [Fact]
+    public async Task ProvisionAsync_ShouldNotCheckTheServerAgain_WhenAnEarlierFixtureFoundItUnreachable()
+    {
+        using var server = new SilentServer();
+        await using SqlServerResource first = Resource(server.ConnectionString, required: null, TimeSpan.FromSeconds(1));
+        await using SqlServerResource second = Resource(server.ConnectionString, required: null, TimeSpan.FromSeconds(1));
+        await first.ProvisionAsync("fixtura_00000000");
+        int connectionsAfterFirst = server.Connections;
+
+        string? reason = await second.ProvisionAsync("fixtura_00000001");
+
+        Assert.NotNull(reason);
+        Assert.Equal(connectionsAfterFirst, server.Connections);
+        Assert.True(connectionsAfterFirst > 0);
+    }
+
+    [Fact]
     public async Task ProvisionAsync_ShouldRejectTheReadyTimeout_WhenItIsNotPositive()
     {
         await using SqlServerResource sql = UnreachableServer(required: null, TimeSpan.Zero);
@@ -56,17 +75,76 @@ public class SqlServerGateTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sql.ProvisionAsync("fixtura_00000000"));
     }
 
-    // Unique variable names per test, because the process's environment is shared by tests running in parallel.
-    private static SqlServerResource UnreachableServer(string? required, TimeSpan? readyTimeout = null)
+    // A unique application name per test, because the resource checks each connection string once per process.
+    private static SqlServerResource UnreachableServer(string? required, TimeSpan? readyTimeout = null) =>
+        Resource($"{Unreachable};Application Name={Guid.NewGuid():N}", required, readyTimeout ?? TimeSpan.FromSeconds(1));
+
+    // Unique variable names per resource, because the process's environment is shared by tests running in parallel.
+    private static SqlServerResource Resource(string server, string? required, TimeSpan readyTimeout)
     {
         string id = Guid.NewGuid().ToString("N");
-        Environment.SetEnvironmentVariable($"FIXTURA_TEST_SERVER_{id}", Unreachable);
+        Environment.SetEnvironmentVariable($"FIXTURA_TEST_SERVER_{id}", server);
         Environment.SetEnvironmentVariable($"FIXTURA_TEST_REQUIRED_{id}", required);
         return new SqlServerResource(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb($"FIXTURA_TEST_SERVER_{id}"),
             RequiredWhenSet = $"FIXTURA_TEST_REQUIRED_{id}",
-            ReadyTimeout = readyTimeout ?? TimeSpan.FromSeconds(1)
+            ReadyTimeout = readyTimeout
         });
+    }
+
+    // Accepts connections and never answers, like a server that is up but stuck, so a check waits out its whole timeout.
+    private sealed class SilentServer : IDisposable
+    {
+        private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+        private readonly List<TcpClient> _clients = [];
+
+        public SilentServer()
+        {
+            _listener.Start();
+            _ = AcceptAsync();
+        }
+
+        // No pooling: SqlClient's pool briefly fails repeat attempts on its own, which would hide a second check.
+        public string ConnectionString => $"Server=tcp:127.0.0.1,{((IPEndPoint)_listener.LocalEndpoint).Port};"
+            + "Integrated Security=true;TrustServerCertificate=true;Pooling=false";
+
+        public int Connections
+        {
+            get
+            {
+                lock (_clients)
+                {
+                    return _clients.Count;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            _listener.Stop();
+            lock (_clients)
+            {
+                _clients.ForEach(client => client.Dispose());
+            }
+        }
+
+        private async Task AcceptAsync()
+        {
+            try
+            {
+                while (true)
+                {
+                    TcpClient client = await _listener.AcceptTcpClientAsync();
+                    lock (_clients)
+                    {
+                        _clients.Add(client);
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
+            {
+            }
+        }
     }
 }

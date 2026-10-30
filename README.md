@@ -183,7 +183,8 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
 - Without a reachable server, every test that uses the fixture is skipped with the reason. Set the `RequiredWhenSet`
   variable to `true` in CI, and the fixture fails instead.
 - `ReadyTimeout` (5 seconds unless set) is how long to wait for the server, rounded up to whole seconds; it must be
-  positive. A LocalDB instance that isn't running yet can need longer on its first connection.
+  positive. A LocalDB instance that isn't running yet can need longer on its first connection. The server is checked
+  once per test run, so an unreachable one costs the timeout once, not once per fixture.
 - Databases that a killed test run left behind are dropped once they're an hour old.
 
 ## Kestrel and per-test overrides

@@ -14,7 +14,7 @@ public sealed class SqlServerOptions
 
     /// <summary>
     /// How long to wait for the server to answer, rounded up to whole seconds; an unreachable server costs this once per
-    /// fixture. Must be positive.
+    /// test run, because every later fixture reuses the answer. Must be positive.
     /// </summary>
     public TimeSpan ReadyTimeout { get; init; } = TimeSpan.FromSeconds(5);
 }

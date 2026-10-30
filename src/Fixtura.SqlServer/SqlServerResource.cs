@@ -16,6 +16,9 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     // may run its factory more than once.
     private static readonly ConcurrentDictionary<string, Lazy<Task>> Sweeps = new();
 
+    // One reachability check per server per process, so an unreachable server costs the ready timeout once, not per fixture.
+    private static readonly ConcurrentDictionary<string, Lazy<Task<string?>>> Checks = new();
+
     private string? _server;
     private string _prefix = "";
 
@@ -34,7 +37,7 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.ReadyTimeout, TimeSpan.Zero, nameof(SqlServerOptions.ReadyTimeout));
         _prefix = namePrefix;
         string? server = options.Source.Resolve();
-        string? reason = server is null ? $"No SQL Server is configured in {options.Source}." : await CheckAsync(server);
+        string? reason = server is null ? $"No SQL Server is configured in {options.Source}." : await CheckOnceAsync(server);
         if (server is not null && reason is null)
         {
             _server = server;
@@ -67,10 +70,15 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         return value is not null && (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<string?> CheckAsync(string server)
+    private Task<string?> CheckOnceAsync(string server)
     {
         // SqlClient counts whole seconds and reads 0 as no limit, so round up.
         var builder = new SqlConnectionStringBuilder(server) { ConnectTimeout = (int)Math.Ceiling(options.ReadyTimeout.TotalSeconds) };
+        return Checks.GetOrAdd(builder.ConnectionString, _ => new Lazy<Task<string?>>(() => CheckAsync(builder))).Value;
+    }
+
+    private static async Task<string?> CheckAsync(SqlConnectionStringBuilder builder)
+    {
         try
         {
             await using var connection = new SqlConnection(builder.ConnectionString);
