@@ -29,6 +29,14 @@ The SQL Server resource empties every table in the fixture's databases and resta
   the app draws from itself, such as EF Core's HiLo, keeps counting, because the app still holds values it reserved.
 - The schema stays, so the app doesn't migrate again.
 
+## Seeding after a reset
+
+`host.SeedOnReset<TContext>(db => ...)`, from `Fixtura.EntityFrameworkCore`, runs as the host starts, after the
+migrations and before any of the app's workers, and after every reset, and saves what it adds. Use it for reference data
+the tests need, instead of keeping tables with `KeepOnReset`. The schema must exist before the app's hosted services
+start, from `MigrateBeforeStart` or created in Program.cs before the app runs. Reset steps run in the order they're
+added, so add it after `RecreateInMemoryDatabasesOnReset`, which would otherwise delete the seed.
+
 ## EF Core in-memory databases
 
 `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every in-memory

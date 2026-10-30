@@ -129,6 +129,22 @@ host.Services
 - Name in-memory databases with `host.UniqueName(...)`, so fixtures don't share data. An override from `WithOverrides`
   gets the same names, so it shares its fixture's data.
 
+### Migrations, seeding and the model
+
+```csharp
+host.MigrateBeforeStart<OrdersDbContext>();
+host.SeedOnReset<OrdersDbContext>(db => db.Countries.Add(new Country { Name = "North" }));
+api.Services.AssertNoPendingModelChanges<OrdersDbContext>();   // in a test
+```
+
+- `MigrateBeforeStart` applies the context's migrations as the host starts, before any hosted service starts, so a
+  worker never sees a missing table.
+- `SeedOnReset` runs as the fixture's host starts, after the migrations and before any worker, and after every
+  `ResetDataAsync`, and saves what it adds, for reference data the tests need. The schema must exist by then: from
+  `MigrateBeforeStart`, or created in Program.cs before the app runs.
+- `AssertNoPendingModelChanges` throws when the model has changes no migration covers, so a forgotten migration fails a
+  test.
+
 ## Settings
 
 ```csharp

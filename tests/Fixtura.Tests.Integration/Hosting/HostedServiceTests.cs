@@ -67,15 +67,6 @@ public sealed class DeferredCrashFixture : TestHost<Program>
     }
 }
 
-public sealed class CrashingWorkerFixture : TestHost<Program>
-{
-    protected override void Configure(TestHostBuilder host)
-    {
-        host.Services.Configure(services => services.AddHostedService<CrashingWorker>());
-        host.FailOnBackgroundServiceCrash();
-    }
-}
-
 public class DeferredHostedServiceTests(DeferredWorkerFixture api) : IClassFixture<DeferredWorkerFixture>
 {
     [Fact]
@@ -142,14 +133,16 @@ public class HostedServiceLifetimeTests
     [Fact]
     public async Task FailOnBackgroundServiceCrash_ShouldFailTheFixture_WhenABackgroundServiceCrashed()
     {
-        var api = new CrashingWorkerFixture();
+        // The worker crashes only once the host is built: a crash during start-up stops the host while it's still building.
+        var api = new LateCrashFixture();
         await api.InitializeAsync();
-        CrashingWorker worker = api.Services.GetServices<IHostedService>().OfType<CrashingWorker>().Single();
+        LateCrashingWorker worker = api.Services.GetServices<IHostedService>().OfType<LateCrashingWorker>().Single();
+        api.Gate.Open.TrySetResult();
         await Record.ExceptionAsync(() => worker.ExecuteTask!);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => api.CreateClientAsync());
 
-        Assert.Contains("CrashingWorker crashed: The queue is gone.", error.Message);
+        Assert.Contains("LateCrashingWorker crashed: The queue is gone.", error.Message);
         await Assert.ThrowsAsync<InvalidOperationException>(() => api.DisposeAsync().AsTask());
     }
 }

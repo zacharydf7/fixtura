@@ -38,6 +38,17 @@ internal ones a library registers for itself:
 
 Each swap replaces the context's options configuration, so a later swap of the same context wins over an earlier one.
 
+## Migrations and the model
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#migrations)]
+
+- `MigrateBeforeStart<TContext>()` applies the context's migrations as the host starts. It runs before any of the app's
+  hosted services start, so a worker never meets a schema that isn't there yet. Use it when the app doesn't migrate at
+  start-up itself.
+- `api.Services.AssertNoPendingModelChanges<TContext>()` throws when the model has changes that no migration covers, as
+  EF Core's `HasPendingModelChanges` reports them. One test with it catches a forgotten migration before a deployment
+  does.
+
 ## Naming in-memory databases
 
 Name in-memory databases with `host.UniqueName(...)`, so fixtures don't share data. A host from `WithOverrides` gets the

@@ -21,6 +21,16 @@ internal static class GuideSnippets
         // </fake-clock>
     }
 
+    public static void Migrations(TestHostBuilder host, TestHost<Program> shop)
+    {
+        // <migrations>
+        host.MigrateBeforeStart<ShopDb>();
+
+        // In a test:
+        shop.Services.AssertNoPendingModelChanges<ShopDb>();
+        // </migrations>
+    }
+
     public static async Task Eventually(TestHost<Program> shop)
     {
         // <eventually>

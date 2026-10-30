@@ -1,1 +1,6 @@
 #nullable enable
+Fixtura.DatabaseSetup
+static Fixtura.DatabaseSetup.AssertNoPendingModelChanges<TContext>(this System.IServiceProvider! services) -> void
+static Fixtura.DatabaseSetup.MigrateBeforeStart<TContext>(this Fixtura.TestHostBuilder! host) -> Fixtura.TestHostBuilder!
+static Fixtura.DatabaseSetup.SeedOnReset<TContext>(this Fixtura.TestHostBuilder! host, System.Action<TContext!>! seed) -> Fixtura.TestHostBuilder!
+static Fixtura.DatabaseSetup.SeedOnReset<TContext>(this Fixtura.TestHostBuilder! host, System.Func<TContext!, System.Threading.Tasks.Task!>! seed) -> Fixtura.TestHostBuilder!
