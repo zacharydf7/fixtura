@@ -10,8 +10,8 @@ public sealed class LazySettingsFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
     {
-        SqliteResource sqlite = host.UseSqliteInMemory();
-        host.Settings(() => new { ConnectionStrings = new { Reports = sqlite.Database("Reports") } });
+        SqliteResource sqlite = host.AddSqliteInMemory();
+        host.Settings(() => new { ConnectionStrings = new { Reports = sqlite.ConnectionString("Reports") } });
         host.Settings(() => new { Probe = new { Order = "lazy" } });
         host.Settings(new { Probe = new { Order = "eager" } });
         host.Settings(new { Probe = new { Later = "eager" } });
@@ -99,7 +99,7 @@ public class LazySettingsTests(LazySettingsFixture api) : IClassFixture<LazySett
 
         string? reports = configuration.GetConnectionString("Reports");
 
-        Assert.Equal(api.Resource<SqliteResource>().Database("Reports"), reports);
+        Assert.Equal(api.Resource<SqliteResource>().ConnectionString("Reports"), reports);
     }
 
     [Fact]

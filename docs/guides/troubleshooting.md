@@ -4,9 +4,9 @@
 
 The skip reason names the resource, why it's unavailable and where the server came from, such as "SQL Server not
 reachable at (localdb)\MSSQLLocalDB: ... The server came from the FIXTURA_SQLSERVER variable, or LocalDB when it isn't
-set." or "Couldn't get a SQL Server from a SQL Server container (mcr.microsoft.com/mssql/server:2022-latest): ...". Start
-the server, set the variable it names, or install Docker for a container source. In CI, set the `RequiredWhenSet`
-variable so the same problem fails the build.
+set." or "Couldn't get a SQL Server from a SQL Server container (mcr.microsoft.com/mssql/server:2022-latest): ...".
+Start the server, set the variable it names, or install Docker for a container source. In CI, set the
+`RequiredWhenVariableIsTrue` variable to `true` so the same problem fails the build.
 
 ## The first test waits several seconds
 
@@ -39,8 +39,9 @@ query when the response's path has one. Add a response, or a catch-all with `Res
 
 ## "is not provisioned yet"
 
-A resource's `Database(...)` was called directly in `Configure`, before the fixture provisioned the resource. Call it
-inside a lambda that runs when the host is built, such as the one given to `ReplaceDbContext` or `Settings(() => ...)`.
+A resource's `ConnectionString(...)` was called directly in `Configure`, before the fixture provisioned the resource.
+Call it inside a lambda that runs when the host is built, such as the one given to `ReplaceDbContext` or
+`Settings(() => ...)`.
 
 ## The app returns 500 and the reason is unclear
 

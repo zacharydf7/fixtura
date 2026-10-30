@@ -24,21 +24,21 @@ internal static class GuideSnippets
     public static void PostgreSql(TestHostBuilder host)
     {
         // <postgresql>
-        PostgreSqlResource sql = host.UsePostgreSql(new PostgreSqlOptions
+        PostgreSqlResource sql = host.AddPostgreSql(new PostgreSqlOptions
         {
             Source = PostgreSqlSource.EnvironmentVariableOrContainer("FIXTURA_POSTGRES"),
-            RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_POSTGRES_REQUIRED",
             KeepOnReset = ["Books"]
         });
-        host.Services.ReplaceDbContext<ShopDb>(db => db.UseNpgsql(sql.Database("Shop")));
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseNpgsql(sql.ConnectionString("Shop")));
         // </postgresql>
     }
 
     public static void Sqlite(TestHostBuilder host)
     {
         // <sqlite>
-        SqliteResource sqlite = host.UseSqliteInMemory();
-        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlite(sqlite.Database("Shop")));
+        SqliteResource sqlite = host.AddSqliteInMemory();
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlite(sqlite.ConnectionString("Shop")));
         // </sqlite>
     }
 
@@ -98,7 +98,7 @@ internal static class GuideSnippets
         {
             // <ci-source>
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("TEST_SQLSERVER"),
-            RequiredWhenSet = "TEST_SQLSERVER_REQUIRED"
+            RequiredWhenVariableIsTrue = "TEST_SQLSERVER_REQUIRED"
             // </ci-source>
         };
         _ = options;
@@ -192,7 +192,7 @@ internal static class GuideSnippets
         {
             Source = SqlServerSource.From("the shared test server", async cancellationToken =>
                 await File.ReadAllTextAsync("test-server.txt", cancellationToken)),
-            RequiredWhenSet = "CI"
+            RequiredWhenVariableIsTrue = "CI"
         };
         // </custom-source>
         _ = options;

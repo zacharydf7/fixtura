@@ -11,12 +11,12 @@ public sealed class ContainerSqlFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
     {
-        SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.Container(),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED"
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED"
         });
-        host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Database("Orders")));
+        host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.ConnectionString("Orders")));
     }
 }
 

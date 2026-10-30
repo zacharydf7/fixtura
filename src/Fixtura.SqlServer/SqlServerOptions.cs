@@ -10,7 +10,7 @@ public sealed class SqlServerOptions
     /// An environment variable that, when "true" or "1", makes a missing server fail the fixture instead of skipping its
     /// tests. Set it in CI.
     /// </summary>
-    public string? RequiredWhenSet { get; init; }
+    public string? RequiredWhenVariableIsTrue { get; init; }
 
     /// <summary>
     /// How long to wait for the server to answer, rounded up to whole seconds; an unreachable server costs this once per

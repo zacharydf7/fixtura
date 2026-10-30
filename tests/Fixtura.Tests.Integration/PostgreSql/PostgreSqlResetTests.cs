@@ -120,7 +120,7 @@ public class PostgreSqlResetTests
             var fixture = new PostgresNotesFixture { Keep = ["Countries", "ref.Regions", "\"ref\".\"Zones\""] };
             await fixture.InitializeAsync();
             var db = new ResetDatabase(fixture);
-            string database = new NpgsqlConnectionStringBuilder(fixture.Postgres.Database("Notes")).Database!;
+            string database = new NpgsqlConnectionStringBuilder(fixture.Postgres.ConnectionString("Notes")).Database!;
             await db.ScalarAsync($"CREATE DATABASE \"{database}\"", "postgres");
             await db.ScalarAsync(Schema);
             return db;

@@ -15,23 +15,23 @@ they're dropped when the fixture is done.
 | `EnvironmentVariableOrContainer(name, image?)` | The variable's server, or a container when it isn't set or is blank. |
 | `From(description, resolveAsync)` | A server from your own code. |
 
-The connection string names a server, not a database.
+The connection string names a server, not a database. `host.AddSqlServer()` with no options uses `LocalDb`.
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#custom-source)]
 
 ## Databases
 
-`sql.Database("Shop")` returns the connection string for this fixture's `Shop` database, named with the fixture's
-prefix. Call it inside the swap's lambda, because the server is only known once the fixture has provisioned it. The app
-creates the database, for example by running its migrations or `EnsureCreated` at start-up.
+`sql.ConnectionString("Shop")` returns the connection string for this fixture's `Shop` database, named with the
+fixture's prefix. Call it inside the swap's lambda, because the server is only known once the fixture has provisioned
+it. The app creates the database, for example by running its migrations or `EnsureCreated` at start-up.
 
 Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
 server state, nobody is connected to them.
 
 ## When there's no server
 
-Without a reachable server, every test that uses the fixture is skipped with the reason. Set the `RequiredWhenSet`
-variable to `true` (or `1`) in CI, and the fixture fails instead.
+Without a reachable server, every test that uses the fixture is skipped with the reason. Set the
+`RequiredWhenVariableIsTrue` variable to `true` (or `1`) in CI, and the fixture fails instead.
 
 `ReadyTimeout` (5 seconds unless set) is how long to wait for the server, rounded up to whole seconds. A LocalDB
 instance that isn't running yet can need longer on its first connection. Each server is checked once per test run, so
@@ -48,7 +48,7 @@ The `Fixtura.SqlServer.Testcontainers` package runs SQL Server in Docker:
 - Testcontainers' resource reaper removes the container when the run ends. With the reaper turned off, as some CI agents
   and Podman setups do, remove it yourself.
 - The image is `SqlServerContainer.DefaultImage` (SQL Server 2022) unless given. Without Docker, the fixture's tests
-  skip with the reason, or fail when the `RequiredWhenSet` variable is set.
+  skip with the reason, or fail when the `RequiredWhenVariableIsTrue` variable is `true`.
 
 ## Resetting
 

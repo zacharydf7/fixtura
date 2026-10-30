@@ -15,14 +15,15 @@ public sealed class PostgresNotesFixture : TestHost<Program>
 
     protected override void Configure(TestHostBuilder host)
     {
-        PostgreSqlResource postgres = Postgres = host.UsePostgreSql(new PostgreSqlOptions
+        PostgreSqlResource postgres = Postgres = host.AddPostgreSql(new PostgreSqlOptions
         {
             Source = PostgreSqlSource.EnvironmentVariableOrContainer("FIXTURA_POSTGRES"),
-            RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_POSTGRES_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15),
             KeepOnReset = Keep
         });
-        host.Services.Configure(services => services.AddDbContext<NotesDb>(db => db.UseNpgsql(postgres.Database("Notes"))));
+        host.Services.Configure(services =>
+            services.AddDbContext<NotesDb>(db => db.UseNpgsql(postgres.ConnectionString("Notes"))));
     }
 
     // TestHost only records an unavailable server, and a test that reaches for a database first would fail instead of skip.
@@ -31,7 +32,7 @@ public sealed class PostgresNotesFixture : TestHost<Program>
         await using var postgres = new PostgreSqlResource(new PostgreSqlOptions
         {
             Source = PostgreSqlSource.EnvironmentVariableOrContainer("FIXTURA_POSTGRES"),
-            RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_POSTGRES_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
         var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
@@ -57,7 +58,7 @@ public sealed class PostgresNotesFixture : TestHost<Program>
 
     public async Task<object?> ScalarAsync(string sql, string? database = null)
     {
-        var builder = new NpgsqlConnectionStringBuilder(Postgres.Database("Notes"));
+        var builder = new NpgsqlConnectionStringBuilder(Postgres.ConnectionString("Notes"));
         if (database is not null)
         {
             builder.Database = database;
@@ -77,10 +78,10 @@ public sealed class ContainerPostgresFixture : TestHost<Program>
     public PostgreSqlResource Postgres { get; private set; } = null!;
 
     protected override void Configure(TestHostBuilder host) =>
-        Postgres = host.UsePostgreSql(new PostgreSqlOptions
+        Postgres = host.AddPostgreSql(new PostgreSqlOptions
         {
             Source = PostgreSqlSource.Container(),
-            RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED"
+            RequiredWhenVariableIsTrue = "FIXTURA_POSTGRES_REQUIRED"
         });
 }
 
@@ -99,7 +100,7 @@ public class PostgreSqlTests(PostgresNotesFixture api) : IClassFixture<PostgresN
     {
         await AddNoteAsync("first");
 
-        string database = new NpgsqlConnectionStringBuilder(api.Postgres.Database("Notes")).Database!;
+        string database = new NpgsqlConnectionStringBuilder(api.Postgres.ConnectionString("Notes")).Database!;
 
         Assert.Matches("^fixtura_[0-9a-f]{8}_Notes$", database);
         Assert.Equal(["first"], await NoteTextsAsync());
@@ -164,8 +165,9 @@ public class PostgreSqlLifetimeTests
         var api = new PostgresNotesFixture();
         await api.InitializeAsync();
         await api.CreateSchemaAsync();
-        string database = new NpgsqlConnectionStringBuilder(api.Postgres.Database("Notes")).Database!;
-        string server = new NpgsqlConnectionStringBuilder(api.Postgres.Database("Notes")) { Database = "postgres" }.ConnectionString;
+        string database = new NpgsqlConnectionStringBuilder(api.Postgres.ConnectionString("Notes")).Database!;
+        string server =
+            new NpgsqlConnectionStringBuilder(api.Postgres.ConnectionString("Notes")) { Database = "postgres" }.ConnectionString;
 
         await api.DisposeAsync();
 
@@ -185,7 +187,7 @@ public class PostgreSqlContainerTests(ContainerPostgresFixture api) : IClassFixt
     {
         _ = api.Services;
 
-        string? password = new NpgsqlConnectionStringBuilder(api.Postgres.Database("Notes")).Password;
+        string? password = new NpgsqlConnectionStringBuilder(api.Postgres.ConnectionString("Notes")).Password;
 
         Assert.False(string.IsNullOrEmpty(password));
         Assert.NotEqual(PostgreSqlBuilder.DefaultPassword, password);
@@ -232,7 +234,7 @@ public class PostgreSqlGateTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
 
-        Assert.EndsWith("is set, so PostgreSQL is required.", error.Message);
+        Assert.EndsWith("is true, so PostgreSQL is required.", error.Message);
     }
 
     [Fact]
@@ -267,7 +269,7 @@ public class PostgreSqlGateTests
         return new PostgreSqlResource(new PostgreSqlOptions
         {
             Source = PostgreSqlSource.From("the test's server", _ => Task.FromResult<string?>(server)),
-            RequiredWhenSet = variable,
+            RequiredWhenVariableIsTrue = variable,
             ReadyTimeout = TimeSpan.FromSeconds(1)
         });
     }

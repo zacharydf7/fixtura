@@ -28,11 +28,11 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     /// The connection string for this fixture's database by that name. Call it inside a swap's lambda: the server is only
     /// known once the fixture has provisioned it.
     /// </summary>
-    public string Database(string name)
+    public string ConnectionString(string name)
     {
-        string server = _server ?? throw new InvalidOperationException("SQL Server is not provisioned yet. Call Database(...) "
-            + "inside a lambda that runs when the host is built, such as the one given to ReplaceDbContext or "
-            + "Settings(() => ...), not in Configure itself.");
+        string server = _server ?? throw new InvalidOperationException("SQL Server is not provisioned yet. Call "
+            + "ConnectionString(...) inside a lambda that runs when the host is built, such as the one given to "
+            + "ReplaceDbContext or Settings(() => ...), not in Configure itself.");
         return new SqlConnectionStringBuilder(server) { InitialCatalog = $"{_prefix}_{name}" }.ConnectionString;
     }
 
@@ -67,7 +67,8 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 
         if (IsRequired())
         {
-            throw new InvalidOperationException($"{reason} {options.RequiredWhenSet} is set, so SQL Server is required.");
+            throw new InvalidOperationException(
+                $"{reason} {options.RequiredWhenVariableIsTrue} is true, so SQL Server is required.");
         }
 
         return TestResourceStatus.Unavailable(reason!);
@@ -116,7 +117,8 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 
     private bool IsRequired()
     {
-        string? value = options.RequiredWhenSet is null ? null : Environment.GetEnvironmentVariable(options.RequiredWhenSet);
+        string? variable = options.RequiredWhenVariableIsTrue;
+        string? value = variable is null ? null : Environment.GetEnvironmentVariable(variable);
         return value is not null && (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase));
     }
 

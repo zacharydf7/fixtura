@@ -13,13 +13,14 @@ public sealed class SqliteResource : ITestResource
 
     /// <summary>
     /// The connection string for this fixture's in-memory database by that name. Call it inside a swap's lambda, such as
-    /// <c>db.UseSqlite(sqlite.Database("Orders"))</c>: the fixture's names are only known once it has been provisioned.
+    /// <c>db.UseSqlite(sqlite.ConnectionString("Orders"))</c>: the fixture's names are only known once it has been
+    /// provisioned.
     /// </summary>
-    public string Database(string name)
+    public string ConnectionString(string name)
     {
         string prefix = _prefix ?? throw new InvalidOperationException("The SQLite resource is not provisioned yet. Call "
-            + "Database(...) inside a lambda that runs when the host is built, such as the one given to ReplaceDbContext or "
-            + "Settings(() => ...), not in Configure itself.");
+            + "ConnectionString(...) inside a lambda that runs when the host is built, such as the one given to "
+            + "ReplaceDbContext or Settings(() => ...), not in Configure itself.");
         string connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = $"{prefix}_{name}",

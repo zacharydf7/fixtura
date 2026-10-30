@@ -11,8 +11,9 @@ public sealed class SqliteNotesFixture : TestHost<Program>
 
     protected override void Configure(TestHostBuilder host)
     {
-        SqliteResource sqlite = Sqlite = host.UseSqliteInMemory();
-        host.Services.Configure(services => services.AddDbContext<NotesDb>(db => db.UseSqlite(sqlite.Database("Notes"))));
+        SqliteResource sqlite = Sqlite = host.AddSqliteInMemory();
+        host.Services.Configure(services =>
+            services.AddDbContext<NotesDb>(db => db.UseSqlite(sqlite.ConnectionString("Notes"))));
     }
 }
 
@@ -133,7 +134,7 @@ public class SqliteTests(SqliteNotesFixture api) : IClassFixture<SqliteNotesFixt
 
     private async Task ExecuteAsync(string sql)
     {
-        await using var connection = new SqliteConnection(api.Sqlite.Database("Notes"));
+        await using var connection = new SqliteConnection(api.Sqlite.ConnectionString("Notes"));
         await connection.OpenAsync(TestContext.Current.CancellationToken);
         await using var command = new SqliteCommand(sql, connection);
         await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
@@ -141,7 +142,7 @@ public class SqliteTests(SqliteNotesFixture api) : IClassFixture<SqliteNotesFixt
 
     private async Task<object?> ScalarAsync(string sql)
     {
-        await using var connection = new SqliteConnection(api.Sqlite.Database("Notes"));
+        await using var connection = new SqliteConnection(api.Sqlite.ConnectionString("Notes"));
         await connection.OpenAsync(TestContext.Current.CancellationToken);
         await using var command = new SqliteCommand(sql, connection);
         return await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
@@ -155,7 +156,7 @@ public class SqliteDisposalTests
     {
         var api = new SqliteNotesFixture();
         await api.InitializeAsync();
-        string database = api.Sqlite.Database("Notes");
+        string database = api.Sqlite.ConnectionString("Notes");
         using (IServiceScope scope = api.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<NotesDb>().Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);

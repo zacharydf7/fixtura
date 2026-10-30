@@ -5,12 +5,12 @@ The `Fixtura.PostgreSql` package gives each fixture its own PostgreSQL databases
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#postgresql)]
 
-- `UsePostgreSql` adds a resource that's provisioned before the fixture's first test. `sql.Database("Shop")` names a
-  database with the fixture's prefix; call it inside the swap's lambda, because the server is only known once the fixture
-  has provisioned it. The app creates the database, as EF Core's `EnsureCreated` or migrations do.
+- `AddPostgreSql` adds a resource that's provisioned before the fixture's first test. `sql.ConnectionString("Shop")`
+  names a database with the fixture's prefix; call it inside the swap's lambda, because the server is only known once
+  the fixture has provisioned it. The app creates the database, as EF Core's `EnsureCreated` or migrations do.
 - When the fixture is done, its databases are dropped, even with connections still open.
-- Without a reachable server, the fixture's tests skip with the reason. Set the `RequiredWhenSet` variable to `true` in CI
-  so a missing server fails the build instead.
+- Without a reachable server, the fixture's tests skip with the reason. Set the `RequiredWhenVariableIsTrue` variable to
+  `true` in CI so a missing server fails the build instead.
 
 ## Where the server comes from
 

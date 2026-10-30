@@ -1,7 +1,7 @@
 # Running in CI
 
 Locally, tests that need a missing server skip with the reason. In CI they should fail instead, so a broken server
-can't turn the build green. Set the `RequiredWhenSet` variable to `true` there.
+can't turn the build green. Set the `RequiredWhenVariableIsTrue` variable to `true` there.
 
 ## GitHub Actions with a SQL Server service
 
@@ -40,10 +40,11 @@ the 5-second default, so raise it in CI or wait for the server in a step before 
 ## With Docker instead of a service
 
 On a Linux runner, `SqlServerSource.EnvironmentVariableOrContainer("TEST_SQLSERVER")` with no variable set starts a
-container itself. Keep the `RequiredWhenSet` variable set, so a runner without Docker fails instead of skipping.
+container itself. Keep the `RequiredWhenVariableIsTrue` variable `true`, so a runner without Docker fails instead of
+skipping.
 
 ## Windows runners
 
 GitHub's Windows runners have SQL Server LocalDB, so `EnvironmentVariableOrLocalDb` works there with no variable set.
-They can't run Linux containers, so container sources skip on Windows; leave the `RequiredWhenSet` variable unset there
-if a Linux job covers them.
+They can't run Linux containers, so container sources skip on Windows; leave the `RequiredWhenVariableIsTrue` variable
+unset there if a Linux job covers them.

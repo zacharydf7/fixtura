@@ -141,7 +141,8 @@ public sealed class TestHostBuilder
 
     /// <summary>
     /// Overrides settings with an object made when the host is built, after the fixture's resources are provisioned, so it
-    /// can hold what they provide, such as <c>new { ConnectionStrings = new { Main = sql.Database("Main") } }</c>.
+    /// can hold what they provide, such as
+    /// <c>new { ConnectionStrings = new { Main = sql.ConnectionString("Main") } }</c>.
     /// Otherwise like <see cref="Settings(object)"/>, in the same order as the other calls.
     /// </summary>
     public TestHostBuilder Settings(Func<object> settings)

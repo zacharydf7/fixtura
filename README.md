@@ -144,8 +144,8 @@ host.Services
 ### SQLite in memory
 
 ```csharp
-SqliteResource sqlite = host.UseSqliteInMemory();
-host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlite(sqlite.Database("Orders")));
+SqliteResource sqlite = host.AddSqliteInMemory();
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlite(sqlite.ConnectionString("Orders")));
 ```
 
 - A relational database with no server, which EF Core's docs recommend over its in-memory provider for tests: keys,
@@ -187,7 +187,8 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
 - `Settings` takes an object or JSON shaped like appsettings.json. JSON may contain comments and trailing commas, and
   enums are written by name.
 - `Settings(() => new { ... })` makes its object when the host is built, after the fixture's resources are provisioned,
-  so it can hold what they provide: `host.Settings(() => new { ConnectionStrings = new { Main = sql.Database("Main") } })`.
+  so it can hold what they provide:
+  `host.Settings(() => new { ConnectionStrings = new { Main = sql.ConnectionString("Main") } })`.
 - Settings reach `Program.cs` before `builder.Build()`, so code that reads configuration early sees them. After
   `Build()` they win over every app source.
 - An array in the overlay replaces the app's array whole, so a 3-entry list in appsettings.json becomes the 1 entry you
@@ -314,28 +315,30 @@ The `Fixtura.SqlServer` package adds a SQL Server resource. Each fixture gets it
 the fixture is done.
 
 ```csharp
-SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
 {
     Source = SqlServerSource.EnvironmentVariableOrLocalDb("TEST_SQLSERVER"),
-    RequiredWhenSet = "TEST_SQLSERVER_REQUIRED"
+    RequiredWhenVariableIsTrue = "TEST_SQLSERVER_REQUIRED"
 });
-host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Database("Orders")));
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.ConnectionString("Orders")));
 ```
 
 - `SqlServerSource.EnvironmentVariableOrLocalDb(name)` takes a server connection string from the variable, or uses
-  LocalDB when it isn't set or is blank. `SqlServerSource.LocalDb` always uses LocalDB.
-- `sql.Database("Orders")` names a database with the fixture's prefix. Call it inside the swap's lambda, because the
-  server is only known once the fixture has provisioned it. The app creates the database, for example by running its
+  LocalDB when it isn't set or is blank. `SqlServerSource.LocalDb` always uses LocalDB, and so does
+  `host.AddSqlServer()` with no options.
+- `sql.ConnectionString("Orders")` names a database with the fixture's prefix. Call it inside the swap's lambda, because
+  the server is only known once the fixture has provisioned it. The app creates the database, for example by running its
   migrations or `EnsureCreated` at startup.
-- Without a reachable server, every test that uses the fixture is skipped with the reason. Set the `RequiredWhenSet`
-  variable to `true` in CI, and the fixture fails instead.
+- Without a reachable server, every test that uses the fixture is skipped with the reason. Set the
+  `RequiredWhenVariableIsTrue` variable to `true` in CI, and the fixture fails instead.
 - `ReadyTimeout` (5 seconds unless set) is how long to wait for the server, rounded up to whole seconds; it must be
   positive. A LocalDB instance that isn't running yet can need longer on its first connection. The server is checked
   once per test run, so an unreachable one costs the timeout once, not once per fixture.
 - Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
   server state, nobody is connected to them.
-- `SqlServerSource.From(description, async cancellationToken => ...)` takes a server from your own code. Returning null, or throwing,
-  skips the fixture's tests with the reason, or fails them when the `RequiredWhenSet` variable is set.
+- `SqlServerSource.From(description, async cancellationToken => ...)` takes a server from your own code. Returning null,
+  or throwing, skips the fixture's tests with the reason, or fails them when the `RequiredWhenVariableIsTrue` variable
+  is `true`.
 
 ### SQL Server in a container
 
@@ -343,10 +346,10 @@ The `Fixtura.SqlServer.Testcontainers` package runs SQL Server in Docker, so a m
 tests:
 
 ```csharp
-SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
 {
     Source = SqlServerSource.EnvironmentVariableOrContainer("TEST_SQLSERVER"),
-    RequiredWhenSet = "TEST_SQLSERVER_REQUIRED"
+    RequiredWhenVariableIsTrue = "TEST_SQLSERVER_REQUIRED"
 });
 ```
 
@@ -355,23 +358,24 @@ SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
   ends; with the reaper turned off, as some CI agents and Podman setups do, remove it yourself.
 - `SqlServerSource.EnvironmentVariableOrContainer(name, image)` uses the variable's server when it's set, such as a CI
   service, and a container otherwise.
-- The image is `SqlServerContainer.DefaultImage` (SQL Server 2022) unless given. Without Docker, the fixture's tests skip
-  with the reason, or fail when the `RequiredWhenSet` variable is set.
+- The image is `SqlServerContainer.DefaultImage` (SQL Server 2022) unless given. Without Docker, the fixture's tests
+  skip with the reason, or fail when the `RequiredWhenVariableIsTrue` variable is `true`.
 
 ### PostgreSQL
 
 ```csharp
-PostgreSqlResource postgres = host.UsePostgreSql(new PostgreSqlOptions
+PostgreSqlResource postgres = host.AddPostgreSql(new PostgreSqlOptions
 {
     Source = PostgreSqlSource.EnvironmentVariableOrContainer("TEST_POSTGRES"),
-    RequiredWhenSet = "TEST_POSTGRES_REQUIRED",
+    RequiredWhenVariableIsTrue = "TEST_POSTGRES_REQUIRED",
     KeepOnReset = ["Countries"]
 });
-host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseNpgsql(postgres.Database("Orders")));
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseNpgsql(postgres.ConnectionString("Orders")));
 ```
 
 - `Fixtura.PostgreSql` works like the SQL Server resource: one prefixed database per name per fixture, dropped when the
-  fixture is done, and the fixture's tests skip without a server or fail when the `RequiredWhenSet` variable is set.
+  fixture is done, and the fixture's tests skip without a server or fail when the `RequiredWhenVariableIsTrue` variable
+  is `true`.
 - `PostgreSqlSource.EnvironmentVariable(name)` takes a server from the variable; `Fixtura.PostgreSql.Testcontainers` adds
   `Container(image)` and `EnvironmentVariableOrContainer(name, image)`, one container per test run with its own password.
 - `ResetDataAsync` truncates every table except EF Core's migrations history and `KeepOnReset`, restarting identity

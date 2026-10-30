@@ -10,13 +10,13 @@ public sealed class SqlShopFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
     {
-        SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
             KeepOnReset = ["Books"]
         });
-        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlServer(sql.Database("Shop")));
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlServer(sql.ConnectionString("Shop")));
         host.Use<QuietBackground>();
         host.Settings(new { Shop = new { FreeShippingOver = 0 } });
     }
@@ -28,13 +28,13 @@ public sealed class ContainerShopFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
     {
-        SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrContainer("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
             KeepOnReset = ["Books"]
         });
-        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlServer(sql.Database("Shop")));
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseSqlServer(sql.ConnectionString("Shop")));
         host.Use<QuietBackground>();
         host.Settings(new { Shop = new { FreeShippingOver = 0 } });
     }

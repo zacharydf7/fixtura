@@ -12,22 +12,22 @@ public sealed class SampleSqlDatabases : ITestHostFeature
 {
     public void Configure(TestHostBuilder host)
     {
-        SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
 
             // A stopped LocalDB instance takes several seconds to start on the first connection.
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
 
         host.Services
-            .ReplaceDbContext<AppIdentityDbContext>(db => db.UseSqlServer(sql.Database("Identity")))
-            .ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Database("Orders")))
-            .ReplaceDbContext<CatalogDbContext>(db => db.UseSqlServer(sql.Database("Catalog")))
-            .ReplaceDbContext<ReportsDbContext>(db => db.UseSqlServer(sql.Database("Reports")))
-            .ReplaceDbContext<AnalyticsDbContext>(db => db.UseSqlServer(sql.Database("Analytics")))
-            .ReplaceDbContexts(typeof(IInventory).Assembly, db => db.UseSqlServer(sql.Database("Inventory")))
+            .ReplaceDbContext<AppIdentityDbContext>(db => db.UseSqlServer(sql.ConnectionString("Identity")))
+            .ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.ConnectionString("Orders")))
+            .ReplaceDbContext<CatalogDbContext>(db => db.UseSqlServer(sql.ConnectionString("Catalog")))
+            .ReplaceDbContext<ReportsDbContext>(db => db.UseSqlServer(sql.ConnectionString("Reports")))
+            .ReplaceDbContext<AnalyticsDbContext>(db => db.UseSqlServer(sql.ConnectionString("Analytics")))
+            .ReplaceDbContexts(typeof(IInventory).Assembly, db => db.UseSqlServer(sql.ConnectionString("Inventory")))
             .Configure(services => services.AddHostedService<CreateSchemas>());
     }
 }

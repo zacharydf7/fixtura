@@ -5,8 +5,8 @@ SQL, and with no server to install. EF Core's own docs recommend SQLite in memor
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#sqlite)]
 
-- `UseSqliteInMemory()` adds the resource; `sqlite.Database("Shop")` names a database with the fixture's prefix. Call it
-  inside the swap's lambda, because the names are only known once the fixture has been provisioned.
+- `AddSqliteInMemory()` adds the resource; `sqlite.ConnectionString("Shop")` names a database with the fixture's prefix.
+  Call it inside the swap's lambda, because the names are only known once the fixture has been provisioned.
 - An in-memory SQLite database vanishes when its last connection closes, and EF Core closes its connections between
   operations. The resource holds one connection open per database for the fixture's lifetime, so the data stays, and
   closes it when the fixture is done, so the database goes.

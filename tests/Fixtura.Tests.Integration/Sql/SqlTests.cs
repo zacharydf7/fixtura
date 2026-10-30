@@ -134,13 +134,13 @@ public class SqlServerResourceTests
         var sql = new SqlServerResource(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
         var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
         string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
-        var probe = new SqlConnectionStringBuilder(sql.Database("Probe"));
+        var probe = new SqlConnectionStringBuilder(sql.ConnectionString("Probe"));
         string database = probe.InitialCatalog;
         await ExecuteAsync(probe, $"CREATE DATABASE [{database}]", database);
 
@@ -209,13 +209,13 @@ public class SqlServerResourceTests
         await using var sql = new SqlServerResource(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
         var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
         string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
-        return new SqlConnectionStringBuilder(sql.Database("Unused")) { InitialCatalog = "" };
+        return new SqlConnectionStringBuilder(sql.ConnectionString("Unused")) { InitialCatalog = "" };
     }
 
     private static async Task<int> ExecuteAsync(SqlConnectionStringBuilder server, string sql, string database)

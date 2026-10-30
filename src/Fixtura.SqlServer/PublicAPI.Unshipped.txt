@@ -1,7 +1,15 @@
 #nullable enable
+*REMOVED*Fixtura.SqlServerOptions.RequiredWhenSet.get -> string?
+*REMOVED*Fixtura.SqlServerOptions.RequiredWhenSet.init -> void
+*REMOVED*Fixtura.SqlServerResource.Database(string! name) -> string!
 *REMOVED*Fixtura.SqlServerResource.ProvisionAsync(string! namePrefix) -> System.Threading.Tasks.Task<string?>!
 *REMOVED*Fixtura.SqlServerResource.ResetAsync() -> System.Threading.Tasks.Task!
 *REMOVED*static Fixtura.SqlServerSource.From(string! description, System.Func<System.Threading.Tasks.Task<string?>!>! resolveAsync) -> Fixtura.SqlServerSource!
+*REMOVED*static Fixtura.SqlServerTestHostExtensions.UseSqlServer(this Fixtura.TestHostBuilder! host, Fixtura.SqlServerOptions! options) -> Fixtura.SqlServerResource!
+Fixtura.SqlServerOptions.RequiredWhenVariableIsTrue.get -> string?
+Fixtura.SqlServerOptions.RequiredWhenVariableIsTrue.init -> void
+Fixtura.SqlServerResource.ConnectionString(string! name) -> string!
 Fixtura.SqlServerResource.ProvisionAsync(Fixtura.TestResourceContext! context) -> System.Threading.Tasks.Task<Fixtura.TestResourceStatus!>!
 Fixtura.SqlServerResource.ResetAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 static Fixtura.SqlServerSource.From(string! description, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<string?>!>! resolveAsync) -> Fixtura.SqlServerSource!
+static Fixtura.SqlServerTestHostExtensions.AddSqlServer(this Fixtura.TestHostBuilder! host, Fixtura.SqlServerOptions? options = null) -> Fixtura.SqlServerResource!

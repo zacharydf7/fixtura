@@ -25,14 +25,14 @@ public sealed class MigratedNotesFixture : TestHost<Program>
 
     protected override void Configure(TestHostBuilder host)
     {
-        SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-            RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+            RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
         host.Services.Configure(services => services
-            .AddDbContext<NotesDb>(db => db.UseSqlServer(sql.Database("Notes")))
+            .AddDbContext<NotesDb>(db => db.UseSqlServer(sql.ConnectionString("Notes")))
             .AddSingleton<NotesReader>()
             .AddHostedService(provider => provider.GetRequiredService<NotesReader>())
             .Configure<HostOptions>(options => options.ServicesStartConcurrently = StartServicesConcurrently));

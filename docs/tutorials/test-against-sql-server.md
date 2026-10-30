@@ -12,17 +12,17 @@ dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 
 [!code-csharp[](../samples/Bookshop.Tests/SqlServer.cs#sql-fixture)]
 
-- `UseSqlServer` adds a resource that's provisioned before the fixture's first test.
+- `AddSqlServer` adds a resource that's provisioned before the fixture's first test.
   `EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER")` takes a server from that variable, or uses LocalDB when it isn't
   set. Pick your own variable names.
-- `sql.Database("Shop")` names a database with the fixture's own prefix. Call it inside the swap's lambda, because the
-  server is only known once the fixture has provisioned it.
+- `sql.ConnectionString("Shop")` names a database with the fixture's own prefix. Call it inside the swap's lambda,
+  because the server is only known once the fixture has provisioned it.
 - Bookshop creates its schema at start-up with `EnsureCreated`, and that now happens in the fixture's database. An app
   that runs migrations at start-up does the same.
 - When the fixture is done, its databases are dropped.
 
 When no server is reachable, every test that uses the fixture is skipped with the reason; no test calls a skip helper.
-In CI, set the `RequiredWhenSet` variable to `true` so a missing server fails the build instead.
+In CI, set the `RequiredWhenVariableIsTrue` variable to `true` so a missing server fails the build instead.
 
 ## Reset the data before each test
 

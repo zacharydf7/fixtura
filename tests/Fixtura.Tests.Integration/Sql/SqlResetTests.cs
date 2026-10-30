@@ -247,7 +247,7 @@ public class SqlResetTests
             var sql = new SqlServerResource(new SqlServerOptions
             {
                 Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
-                RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
+                RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
                 ReadyTimeout = TimeSpan.FromSeconds(15),
                 KeepOnReset = keep ?? ["dbo.Countries", "Currencies", "AuditLog", "[dbo].[Regions]"]
             });
@@ -255,7 +255,7 @@ public class SqlResetTests
             string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
             Assert.SkipWhen(unavailable is not null, unavailable ?? "");
 
-            var db = new ResetDatabase(sql, sql.Database("Shop"));
+            var db = new ResetDatabase(sql, sql.ConnectionString("Shop"));
             if (!createDatabase)
             {
                 return db;

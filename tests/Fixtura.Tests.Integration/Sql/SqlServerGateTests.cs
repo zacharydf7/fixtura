@@ -29,7 +29,7 @@ public class SqlServerGateTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             sql.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
 
-        Assert.EndsWith("is set, so SQL Server is required.", error.Message);
+        Assert.EndsWith("is true, so SQL Server is required.", error.Message);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class SqlServerGateTests
         await using var sql = new SqlServerResource(new SqlServerOptions
         {
             Source = SqlServerSource.From("the test's source", _ => throw new InvalidOperationException("Docker isn't running.")),
-            RequiredWhenSet = required
+            RequiredWhenVariableIsTrue = required
         });
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -200,7 +200,7 @@ public class SqlServerGateTests
         return new SqlServerResource(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb($"FIXTURA_TEST_SERVER_{id}"),
-            RequiredWhenSet = $"FIXTURA_TEST_REQUIRED_{id}",
+            RequiredWhenVariableIsTrue = $"FIXTURA_TEST_REQUIRED_{id}",
             ReadyTimeout = readyTimeout
         });
     }
