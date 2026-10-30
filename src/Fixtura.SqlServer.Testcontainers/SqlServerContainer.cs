@@ -3,7 +3,11 @@ using Testcontainers.MsSql;
 
 namespace Fixtura;
 
-/// <summary>SQL Server sources that run the server in a Docker container.</summary>
+/// <summary>
+/// SQL Server sources that run the server in a Docker container: <c>SqlServerSource.Container(image)</c> and
+/// <c>SqlServerSource.EnvironmentVariableOrContainer(name, image)</c>, from <see cref="DefaultImage"/> unless an image is
+/// given.
+/// </summary>
 public static class SqlServerContainer
 {
     /// <summary>The SQL Server image used unless another is given.</summary>

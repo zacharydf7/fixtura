@@ -35,7 +35,8 @@ jobs:
           if [ "$ready" != true ]; then docker logs sql; exit 1; fi
           echo "FIXTURA_SQLSERVER=Server=localhost,1433;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=true" >> "$GITHUB_ENV"
           echo "FIXTURA_SQLSERVER_REQUIRED=true" >> "$GITHUB_ENV"
-      - run: dotnet test -c Release
+      # The test projects share one SQL Server, which creates databases one at a time: run together, they time out.
+      - run: dotnet test -c Release --max-parallel-test-modules 1
       # Packing on every run, with package validation on, finds a packaging problem before a release does.
       - name: Pack
         if: runner.os == 'Linux'

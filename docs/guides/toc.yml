@@ -1,0 +1,24 @@
+- name: Fixtures and features
+  href: fixtures-and-features.md
+- name: Swapping services
+  href: service-swaps.md
+- name: Swapping DbContexts
+  href: dbcontext-swaps.md
+- name: Settings
+  href: settings.md
+- name: Test users
+  href: test-users.md
+- name: Faking outbound HTTP
+  href: http-fakes.md
+- name: The app's logs
+  href: logs.md
+- name: SQL Server
+  href: sql-server.md
+- name: Resetting data
+  href: resetting-data.md
+- name: Kestrel and per-test overrides
+  href: kestrel-and-overrides.md
+- name: Running in CI
+  href: ci.md
+- name: Troubleshooting
+  href: troubleshooting.md

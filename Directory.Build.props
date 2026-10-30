@@ -14,7 +14,7 @@
       <Version>0.1.0-dev</Version>
       <Copyright>Copyright (c) 2026 Zachary Fry</Copyright>
       <PackageLicenseExpression>MIT</PackageLicenseExpression>
-      <PackageProjectUrl>https://github.com/zacharydf7/fixtura</PackageProjectUrl>
+      <PackageProjectUrl>https://zacharydf7.github.io/fixtura/</PackageProjectUrl>
       <RepositoryUrl>https://github.com/zacharydf7/fixtura</RepositoryUrl>
       <PackageTags>aspnetcore;integration-testing;webapplicationfactory;xunit;testing;efcore</PackageTags>
       <PackageReadmeFile>README.md</PackageReadmeFile>

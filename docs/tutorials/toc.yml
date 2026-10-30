@@ -1,0 +1,6 @@
+- name: Test a secured API
+  href: test-a-secured-api.md
+- name: Test against SQL Server
+  href: test-against-sql-server.md
+- name: Fake a partner API
+  href: fake-a-partner-api.md

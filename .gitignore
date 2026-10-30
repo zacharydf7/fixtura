@@ -485,3 +485,8 @@ $RECYCLE.BIN/
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+# The documentation site and its generated API pages.
+docs/_site/
+docs/api/*
+!docs/api/index.md

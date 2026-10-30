@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [{ "src": "../src", "files": ["**/*.csproj"] }],
+      "dest": "api",
+      "properties": { "Configuration": "Release" }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": ["api/**.yml", "api/index.md"] },
+      { "files": ["*.md", "toc.yml", "tutorials/**.md", "tutorials/toc.yml", "guides/**.md", "guides/toc.yml"] }
+    ],
+    "dest": "_site",
+    "template": ["default", "modern"],
+    "globalMetadata": {
+      "_appTitle": "Fixtura",
+      "_appName": "Fixtura",
+      "_appFooter": "Fixtura is MIT licensed. <a href=\"https://github.com/zacharydf7/fixtura\">Source on GitHub</a>.",
+      "_enableSearch": true,
+      "_disableContribution": true
+    }
+  }
+}

@@ -16,6 +16,9 @@ by hand:
 
 **Status:** pre-release. Nothing is published to nuget.org yet.
 
+**Documentation:** <https://zacharydf7.github.io/fixtura/>, with a getting-started guide, tutorials and the API
+reference. This README is the short overview.
+
 ## A fixture per host shape
 
 Write one small fixture class for each shape of host your tests need. Tests share it through xUnit's class, collection or

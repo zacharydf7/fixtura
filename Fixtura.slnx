@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/docs/samples/">
+    <Project Path="docs/samples/Bookshop.Tests/Bookshop.Tests.csproj" />
+    <Project Path="docs/samples/Bookshop/Bookshop.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Fixtura.EntityFrameworkCore/Fixtura.EntityFrameworkCore.csproj" />
     <Project Path="src/Fixtura.SqlServer/Fixtura.SqlServer.csproj" />
