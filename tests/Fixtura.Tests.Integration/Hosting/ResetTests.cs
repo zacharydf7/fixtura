@@ -69,3 +69,32 @@ public class ResetBeforeBuildTests(ResettableFixture api) : IClassFixture<Resett
         Assert.Equal(["resource"], api.Resets);
     }
 }
+
+public sealed class ScopedNote;
+
+// Two reset steps that need a scoped service, as a step that re-seeds through a DbContext does.
+public sealed class ScopedResetFixture : TestHost<Program>
+{
+    public List<ScopedNote> Notes { get; } = [];
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Services.Configure(services => services.AddScoped<ScopedNote>());
+        host.OnReset(services => Notes.Add(services.GetRequiredService<ScopedNote>()));
+        host.OnReset(services => Notes.Add(services.GetRequiredService<ScopedNote>()));
+    }
+}
+
+public class ScopedResetTests(ScopedResetFixture api) : IClassFixture<ScopedResetFixture>
+{
+    [Fact]
+    public async Task ResetDataAsync_ShouldGiveEachStepItsOwnScope_WhenStepsNeedScopedServices()
+    {
+        _ = api.Services;
+
+        await api.ResetDataAsync();
+
+        Assert.Equal(2, api.Notes.Count);
+        Assert.NotSame(api.Notes[0], api.Notes[1]);
+    }
+}

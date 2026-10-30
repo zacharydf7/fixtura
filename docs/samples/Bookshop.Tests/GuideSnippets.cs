@@ -141,11 +141,7 @@ internal static class GuideSnippets
     public static void Reset(TestHostBuilder host)
     {
         // <on-reset>
-        host.OnReset(services =>
-        {
-            services.GetRequiredService<MemoryAuditTrail>().Clear();
-            return Task.CompletedTask;
-        });
+        host.OnReset(services => services.GetRequiredService<MemoryAuditTrail>().Clear());
         host.AddResource(new QueueResource());
         // </on-reset>
     }

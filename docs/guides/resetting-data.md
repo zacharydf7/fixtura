@@ -8,7 +8,8 @@ Tests that share a fixture also share its data. Reset it before each test that n
 
 1. Each resource, such as the SQL Server resource.
 2. The [HTTP fakes](http-fakes.md): recorded requests are cleared, and responses set in `Configure` come back.
-3. The steps added with `host.OnReset(...)`, in the order they were added. They only run once the host has been built.
+3. The steps added with `host.OnReset(...)`, in the order they were added. Each runs in a scope of its own, so it can
+   use scoped services such as a DbContext. They only run once the host has been built.
 
 ## SQL Server
 

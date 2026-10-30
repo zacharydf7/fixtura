@@ -113,13 +113,22 @@ public sealed class TestHostBuilder
 
     /// <summary>
     /// Adds a step that <c>ResetDataAsync</c> runs against the app's services after the resources have reset, such as
-    /// clearing what a fake recorded. Steps run in the order they are added, and only once the host has been built.
+    /// clearing what a fake recorded. Each step gets a scope of its own, so it can use scoped services such as a
+    /// DbContext. Steps run in the order they are added, and only once the host has been built.
     /// </summary>
     public TestHostBuilder OnReset(Func<IServiceProvider, Task> reset)
     {
         _resetSteps.Add(reset);
         return this;
     }
+
+    /// <inheritdoc cref="OnReset(Func{IServiceProvider, Task})"/>
+    public TestHostBuilder OnReset(Action<IServiceProvider> reset) =>
+        OnReset(services =>
+        {
+            reset(services);
+            return Task.CompletedTask;
+        });
 
     /// <summary>
     /// Writes the app's logs to the output of the test whose request caused them, which xUnit shows when the test fails.
@@ -199,7 +208,8 @@ public sealed class TestHostBuilder
 
         foreach (Func<IServiceProvider, Task> step in _resetSteps)
         {
-            await step(services);
+            await using AsyncServiceScope scope = services.CreateAsyncScope();
+            await step(scope.ServiceProvider);
         }
     }
 

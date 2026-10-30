@@ -17,7 +17,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 {
     private readonly TestHostBuilder _builder;
     private readonly Lock _gate = new();
-    private HostFactory? _factory;
+    private Task<HostFactory>? _build;
     private string? _skipReason;
 
     protected TestHost()
@@ -40,49 +40,59 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         : throw new InvalidOperationException(
             "BaseAddress needs host.Server = ServerKind.Kestrel; on TestServer use CreateClientAsync.");
 
+    private HostFactory Factory => FactoryAsync().GetAwaiter().GetResult();
+
     // Building on first use, after InitializeAsync, lets a missing resource skip the test instead of failing the fixture.
-    private WebApplicationFactory<TProgram> Factory
+    // The host builds once, on a thread of its own: its start-up waits on async work, and callers that block thread-pool
+    // threads while it runs can starve it. A failed build stays failed, so later tests don't run Program.cs again.
+    private Task<HostFactory> FactoryAsync()
     {
-        get
+        if (_skipReason is not null)
         {
-            if (_skipReason is not null)
-            {
-                throw new TestSkippedException(_skipReason);
-            }
+            throw new TestSkippedException(_skipReason);
+        }
 
-            // WebApplicationFactory starts the host on first use without locking, and assembly fixtures are shared in parallel.
-            lock (_gate)
+        lock (_gate)
+        {
+            // Taken on the test's thread: the app builds on a thread of its own, outside any test.
+            Action<string> sendDiagnosticMessage = TestContext.Current.SendDiagnosticMessage;
+            _build ??= Task.Factory.StartNew(() => Build(sendDiagnosticMessage), CancellationToken.None,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            return _build;
+        }
+    }
+
+    private HostFactory Build(Action<string> sendDiagnosticMessage)
+    {
+        var factory = new HostFactory(web => _builder.Apply(web, sendDiagnosticMessage));
+        if (_builder.Server == ServerKind.Kestrel)
+        {
+            factory.UseKestrel(0);
+        }
+
+        try
+        {
+            if (_builder.LogsToTestOutput)
             {
-                if (_factory is null)
+                // The host outlives this test, so its background work mustn't carry this test's context and send logs to
+                // its output.
+                using (ExecutionContext.SuppressFlow())
                 {
-                    // Taken on the test's thread: the app builds on a thread of its own, outside any test.
-                    Action<string> sendDiagnosticMessage = TestContext.Current.SendDiagnosticMessage;
-                    var factory = new HostFactory(web => _builder.Apply(web, sendDiagnosticMessage));
-                    if (_builder.Server == ServerKind.Kestrel)
-                    {
-                        factory.UseKestrel(0);
-                    }
-
-                    if (_builder.LogsToTestOutput && !ExecutionContext.IsFlowSuppressed())
-                    {
-                        // The host outlives this test, so its background work mustn't carry this test's context and
-                        // send logs to its output.
-                        using (ExecutionContext.SuppressFlow())
-                        {
-                            _ = factory.Services;
-                        }
-                    }
-                    else
-                    {
-                        _ = factory.Services;
-                    }
-
-                    _factory = factory;
+                    _ = factory.Services;
                 }
-
-                return _factory;
+            }
+            else
+            {
+                _ = factory.Services;
             }
         }
+        catch
+        {
+            factory.Dispose();
+            throw;
+        }
+
+        return factory;
     }
 
     /// <summary>Records what this host shape changes from production. Runs once, before any resource is provisioned.</summary>
@@ -106,7 +116,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// </summary>
     public async Task<HttpClient> CreateClientAsync(TestUser? user = null)
     {
-        WebApplicationFactory<TProgram> factory = Factory;
+        HostFactory factory = await FactoryAsync();
         SignedInUser? signedIn = user is null ? null : await _builder.Users.SignInAsync(user, factory.Services);
 
         // WebApplicationFactory records every client it creates in a list that isn't thread-safe.
@@ -136,7 +146,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>
     /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,
     /// HTTP fakes forget their requests and a test's responses, then the steps added with
-    /// <see cref="TestHostBuilder.OnReset"/> run. Call it before a test, never while another
+    /// <see cref="TestHostBuilder.OnReset(Func{IServiceProvider, Task})"/> run. Call it before a test, never while another
     /// test uses the same fixture, as tests sharing an assembly fixture can.
     /// </summary>
     public Task ResetDataAsync()
@@ -147,12 +157,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         }
 
         // Before the host is built the app hasn't run, so only the resources can hold data.
-        HostFactory? factory;
-        lock (_gate)
-        {
-            factory = _factory;
-        }
-
+        HostFactory? factory = _build is { IsCompletedSuccessfully: true } ? _build.Result : null;
         return _builder.ResetAsync(factory?.Services);
     }
 
@@ -171,9 +176,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     public async ValueTask DisposeAsync()
     {
         // The app goes first, so it has closed its connections before resources such as databases are dropped.
-        if (_factory is not null)
+        if (_build is { IsCompletedSuccessfully: true })
         {
-            await _factory.DisposeAsync();
+            await _build.Result.DisposeAsync();
         }
 
         await _builder.DisposeResourcesAsync();

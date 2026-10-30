@@ -289,7 +289,8 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifet
 - `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every EF Core
   in-memory database, so only data seeded with `HasData` is left.
 - `host.OnReset(services => ...)` adds a step of your own, such as clearing what a fake recorded. Steps run after the
-  resources reset, once the host has been built. A custom `ITestResource` resets its data in `ResetAsync`.
+  resources reset, once the host has been built, each in a scope of its own. A custom `ITestResource` resets its data in
+  `ResetAsync`.
 - Test users are seeded again at their next sign-in.
 - Never reset while another test uses the fixture. Tests sharing a class or collection fixture run one at a time, but
   tests sharing an assembly fixture can run in parallel.
