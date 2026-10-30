@@ -108,6 +108,54 @@ public class CookieIdentityTests(CookieIdentityFixture api) : IClassFixture<Cook
     }
 
     [Fact]
+    public async Task CreateClientAsync_ShouldKeepRolesTheAppGranted_WhenATestAlsoAskedForThem()
+    {
+        await api.CreateClientAsync(TestUser.Named("kim"));
+        await Identity.AddToRoleAsync<IdentityUser>(api.Services, "kim", "Auditor");
+        await api.CreateClientAsync(TestUser.Named("kim").WithRoles("Auditor"));
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("kim"));
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Auditor", Assert.Single(me!.Roles));
+    }
+
+    // The app's stamp check rebuilds the principal from the store, so this fails unless the store itself lost the role.
+    [Fact]
+    public async Task CreateClientAsync_ShouldDropRolesAnEarlierSignInAdded_WhenTheSameUserSignsInWithoutThem()
+    {
+        await api.CreateClientAsync(TestUser.Named("erin").WithRoles("Auditor", "Manager"));
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("erin").WithRoles("Auditor"));
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Auditor", Assert.Single(me!.Roles));
+    }
+
+    [Fact]
+    public async Task CreateClientAsync_ShouldDropClaimsAnEarlierSignInAdded_WhenTheSameUserSignsInWithoutThem()
+    {
+        await api.CreateClientAsync(TestUser.Named("lou").WithClaim("tenant", "north"));
+
+        await api.CreateClientAsync(TestUser.Named("lou").WithClaim("tenant", "south"));
+
+        IList<Claim> claims = await Identity.GetClaimsAsync<IdentityUser>(api.Services, "lou");
+        Assert.Equal("south", Assert.Single(claims, claim => claim.Type == "tenant").Value);
+    }
+
+    [Fact]
+    public async Task WithOverrides_ShouldDropRolesItsParentAdded_WhenTheSameUserSignsInWithoutThem()
+    {
+        await api.CreateClientAsync(TestUser.Named("ned").WithRoles("Auditor", "Manager"));
+        await using TestHost<CookieIdentityApp.Program> overridden = api.WithOverrides(_ => { });
+        HttpClient client = await overridden.CreateClientAsync(TestUser.Named("ned").WithRoles("Auditor"));
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Auditor", Assert.Single(me!.Roles));
+    }
+
+    [Fact]
     public async Task WithId_ShouldFindTheUser_WhenTheAppRenamedItAfterItsFirstSignIn()
     {
         TestUser user = TestUser.Named("hank").WithId("7c0ffee0-0000-0000-0000-000000000002").WithRoles("Auditor");

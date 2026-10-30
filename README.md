@@ -147,10 +147,11 @@ host.Users.SeedWith<IdentityUserSeeder<AppUser, IdentityRole>>();
 
 The seeder runs before each sign-in, one at a time per fixture. Give a user a fixed id with `TestUser.WithId(id)` when
 tests check ownership; the seeder then finds the user by id, even after the app renamed it.
-`IdentityUserSeeder<TUser, TRole>` creates an ASP.NET Identity user, or adds the test user's missing roles and claims to
-an existing one, and returns the claims Identity signs in. It never removes roles or claims, because a test may have
-changed the user through the app; give a user that needs fewer roles its own name. Override `NewUser` to
-set your own fields on a user it creates, or implement `ITestUserSeeder` for any other store.
+`IdentityUserSeeder<TUser, TRole>` creates an ASP.NET Identity user, or gives an existing one the test user's roles and
+claims, and returns the claims Identity signs in. A role or claim that an earlier sign-in added is removed when this one
+doesn't ask for it, so a user that one test made a `Manager` is a plain user again in the next. Roles and claims the app
+gave the user stay. Override `NewUser` to set your own fields on a user it creates, or implement `ITestUserSeeder` for
+any other store.
 
 ## Missing infrastructure
 

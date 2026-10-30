@@ -17,16 +17,18 @@ namespace Fixtura;
 public sealed class TestUsers
 {
     private readonly SemaphoreSlim _seeding;
+    private readonly SeederAdditions _additions;
     private readonly RsaSecurityKey _authorityKey = new(RSA.Create(2048));
     private Type? _seeder;
 
-    internal TestUsers() : this(new SemaphoreSlim(1, 1))
+    internal TestUsers() : this(new SemaphoreSlim(1, 1), new SeederAdditions())
     {
     }
 
-    private TestUsers(SemaphoreSlim seeding)
+    private TestUsers(SemaphoreSlim seeding, SeederAdditions additions)
     {
         _seeding = seeding;
+        _additions = additions;
     }
 
     /// <summary>How users reach the app; <see cref="UserSignIn.AppJwtBearer"/> unless set.</summary>
@@ -39,11 +41,12 @@ public sealed class TestUsers
         return this;
     }
 
-    // Shares the seeding lock, because an override host seeds the same store as its parent.
-    internal TestUsers Copy() => new(_seeding) { SignIn = SignIn, _seeder = _seeder };
+    // Shares the seeding lock and what was seeded, because an override host seeds the same store as its parent.
+    internal TestUsers Copy() => new(_seeding, _additions) { SignIn = SignIn, _seeder = _seeder };
 
     internal void Apply(IServiceCollection services)
     {
+        services.AddSingleton(_additions);
         if (SignIn == UserSignIn.AppJwtBearer)
         {
             services.PostConfigureAll<JwtBearerOptions>(UseTestKeyForAuthority);

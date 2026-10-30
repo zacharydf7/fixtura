@@ -5,9 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fixtura;
 
 /// <summary>
-/// Creates the ASP.NET Identity user, or adds the test user's missing roles and claims to an existing one, and returns the
-/// principal Identity signs in. Nothing is removed, because a test may have changed the user through the app; give a user
-/// that needs fewer roles its own name. Override <see cref="NewUser"/> to set the app's own fields on a user it creates.
+/// Creates the ASP.NET Identity user, or gives an existing one the test user's roles and claims, and returns the principal
+/// Identity signs in. Roles and claims an earlier sign-in added are removed when this one doesn't ask for them; what the
+/// app gave the user stays. Override <see cref="NewUser"/> to set the app's own fields on a user it creates.
 /// </summary>
 public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : class, new() where TRole : class, new()
 {
@@ -17,8 +17,12 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
         // An id outlives a rename the app may have made, so it finds the user first when the test gave one.
         TUser? existing = user.Id is null ? await users.FindByNameAsync(user.Name) : await users.FindByIdAsync(user.Id);
         TUser identityUser = existing ?? await CreateAsync(users, user);
-        await AddMissingRolesAsync(users, services, identityUser, user.Roles);
-        await AddMissingClaimsAsync(users, identityUser, user.Claims);
+
+        // Outside a Fixtura host nothing tracks earlier sign-ins, so nothing is taken back.
+        SeederAdditions additions = services.GetService<SeederAdditions>() ?? new SeederAdditions();
+        string userId = await users.GetUserIdAsync(identityUser);
+        await SyncRolesAsync(users, services, identityUser, user.Roles, additions.RolesOf(userId));
+        await SyncClaimsAsync(users, identityUser, user.Claims, additions.ClaimsOf(userId));
 
         var principals = services.GetRequiredService<IUserClaimsPrincipalFactory<TUser>>();
         ClaimsPrincipal principal = await principals.CreateAsync(identityUser);
@@ -46,8 +50,8 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
         return identityUser;
     }
 
-    private static async Task AddMissingRolesAsync(UserManager<TUser> users, IServiceProvider services, TUser identityUser,
-        IReadOnlyList<string> roles)
+    private static async Task SyncRolesAsync(UserManager<TUser> users, IServiceProvider services, TUser identityUser,
+        IReadOnlyList<string> roles, HashSet<string> added)
     {
         if (!users.SupportsUserRole)
         {
@@ -57,6 +61,13 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
         }
 
         IList<string> current = await users.GetRolesAsync(identityUser);
+        List<string> stale = current.Where(role => added.Contains(role) && !roles.Contains(role)).ToList();
+        if (stale.Count > 0)
+        {
+            Check(await users.RemoveFromRolesAsync(identityUser, stale));
+        }
+
+        added.IntersectWith(roles);
         var roleManager = services.GetRequiredService<RoleManager<TRole>>();
         foreach (string role in roles.Except(current))
         {
@@ -68,10 +79,12 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
             }
 
             Check(await users.AddToRoleAsync(identityUser, role));
+            added.Add(role);
         }
     }
 
-    private static async Task AddMissingClaimsAsync(UserManager<TUser> users, TUser identityUser, IReadOnlyList<Claim> claims)
+    private static async Task SyncClaimsAsync(UserManager<TUser> users, TUser identityUser, IReadOnlyList<Claim> claims,
+        HashSet<(string Type, string Value)> added)
     {
         if (!users.SupportsUserClaim)
         {
@@ -79,15 +92,24 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
             return;
         }
 
+        List<(string Type, string Value)> wanted = claims.Select(Key).ToList();
         IList<Claim> stored = await users.GetClaimsAsync(identityUser);
-        List<Claim> missing = claims.Where(wanted => !stored.Any(claim => Same(claim, wanted))).ToList();
+        List<Claim> stale = stored.Where(claim => added.Contains(Key(claim)) && !wanted.Contains(Key(claim))).ToList();
+        if (stale.Count > 0)
+        {
+            Check(await users.RemoveClaimsAsync(identityUser, stale));
+        }
+
+        added.IntersectWith(wanted);
+        List<Claim> missing = claims.Where(claim => !stored.Any(existing => Key(existing) == Key(claim))).ToList();
         if (missing.Count > 0)
         {
             Check(await users.AddClaimsAsync(identityUser, missing));
+            added.UnionWith(missing.Select(Key));
         }
     }
 
-    private static bool Same(Claim left, Claim right) => left.Type == right.Type && left.Value == right.Value;
+    private static (string Type, string Value) Key(Claim claim) => (claim.Type, claim.Value);
 
     private static void Require(bool condition, string message)
     {
