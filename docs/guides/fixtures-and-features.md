@@ -43,6 +43,7 @@ caring that one already includes the other.
 | `CreateClientAsync(user, options)` | The same, built with `TestClientOptions`; see below |
 | `Services` | The app's root services |
 | `CreateScope()` | A scope for resolving scoped services such as a DbContext |
+| `StartHostedServiceAsync<T>()` | Starts a hosted service the fixture deferred; see [Swapping services](service-swaps.md) |
 | `ResetDataAsync()` | Puts the fixture's data back to its starting state; see [Resetting data](resetting-data.md) |
 | `WithOverrides(...)` | A second host with extra changes for a few tests; see [Kestrel and per-test overrides](kestrel-and-overrides.md) |
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |

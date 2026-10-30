@@ -134,6 +134,56 @@ public class ServiceCollectionSwapsTests
         Assert.Throws<NothingMatchedException>(services.RemoveHostedService<CleanupWorker>);
     }
 
+    [Fact]
+    public void DeferHostedService_ShouldStartTheAppsOwnInstance_WhenTheAppForwardsToASingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<SyncWorker>();
+        services.AddHostedService(provider => provider.GetRequiredService<SyncWorker>());
+
+        services.DeferHostedService<SyncWorker>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        var deferred = provider.GetRequiredService<DeferredHostedService<SyncWorker>>();
+        Assert.Same(provider.GetRequiredService<SyncWorker>(), deferred.Service);
+    }
+
+    [Fact]
+    public void DeferHostedService_ShouldStartTheInstance_WhenTheAppRegisteredOne()
+    {
+        var services = new ServiceCollection();
+        var worker = new CleanupWorker();
+        services.AddSingleton<IHostedService>(worker);
+
+        services.DeferHostedService<CleanupWorker>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Same(worker, provider.GetRequiredService<DeferredHostedService<CleanupWorker>>().Service);
+    }
+
+    [Fact]
+    public void DeferHostedService_ShouldDisposeTheService_WhenTheProviderIsDisposed()
+    {
+        var services = new ServiceCollection();
+        services.AddHostedService<DisposableWorker>();
+        services.DeferHostedService<DisposableWorker>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        DisposableWorker worker = provider.GetRequiredService<DeferredHostedService<DisposableWorker>>().Service;
+
+        provider.Dispose();
+
+        Assert.True(worker.Disposed);
+    }
+
+    [Fact]
+    public void DeferHostedService_ShouldThrow_WhenTheServiceIsNotRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddHostedService<SyncWorker>();
+
+        Assert.Throws<NothingMatchedException>(services.DeferHostedService<CleanupWorker>);
+    }
+
     public interface IClock
     {
         DateTimeOffset Now { get; }
@@ -157,5 +207,17 @@ public class ServiceCollectionSwapsTests
     public sealed class CleanupWorker : BackgroundService
     {
         protected override Task ExecuteAsync(CancellationToken stoppingToken) => Task.CompletedTask;
+    }
+
+    // Records its disposal, as a timer-based hosted service releases its timer.
+    public sealed class DisposableWorker : IHostedService, IDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void Dispose() => Disposed = true;
     }
 }

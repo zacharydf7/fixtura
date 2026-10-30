@@ -37,4 +37,11 @@ public sealed class TestServices
 
     public TestServices RemoveHostedService<THostedService>() where THostedService : IHostedService =>
         Configure(services => services.RemoveHostedService<THostedService>());
+
+    /// <summary>
+    /// Keeps the hosted service from starting with the host, so a test starts it once what it needs is in place, with the
+    /// fixture's <c>StartHostedServiceAsync</c>. The host still stops it. Matches what <c>RemoveHostedService</c> matches.
+    /// </summary>
+    public TestServices DeferHostedService<THostedService>() where THostedService : class, IHostedService =>
+        Configure(services => services.DeferHostedService<THostedService>());
 }

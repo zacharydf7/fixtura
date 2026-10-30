@@ -47,13 +47,36 @@ public static class ServiceCollectionSwaps
     public static IServiceCollection RemoveHostedService<THostedService>(this IServiceCollection services)
         where THostedService : IHostedService
     {
-        RemoveWhere(services, $"RemoveHostedService<{typeof(THostedService).Name}>", descriptor =>
-            descriptor.ServiceType == typeof(IHostedService) && !descriptor.IsKeyedService
-            && (descriptor.ImplementationType == typeof(THostedService)
-                || descriptor.ImplementationInstance is THostedService
-                || descriptor.ImplementationFactory?.Method.ReturnType == typeof(THostedService)));
+        RemoveWhere(services, $"RemoveHostedService<{typeof(THostedService).Name}>", IsHostedService<THostedService>);
         return services;
     }
+
+    // Only a fixture can start a deferred service, so this is reached through TestServices.
+    internal static IServiceCollection DeferHostedService<THostedService>(this IServiceCollection services)
+        where THostedService : class, IHostedService
+    {
+        ServiceDescriptor? registration = services.LastOrDefault(IsHostedService<THostedService>);
+        RemoveWhere(services, $"DeferHostedService<{typeof(THostedService).Name}>", IsHostedService<THostedService>);
+
+        // The app's own registration moves under a private key, so the container still creates and disposes the service,
+        // and a factory that hands out the app's singleton still hands out that one.
+        const string key = "Fixtura.Deferred";
+        services.Add(registration!.ImplementationFactory is { } factory
+            ? ServiceDescriptor.KeyedSingleton(typeof(THostedService), key, (provider, _) => factory(provider))
+            : registration.ImplementationInstance is { } instance
+                ? ServiceDescriptor.KeyedSingleton(typeof(THostedService), key, instance)
+                : ServiceDescriptor.KeyedSingleton(typeof(THostedService), key, typeof(THostedService)));
+        services.AddSingleton(provider =>
+            new DeferredHostedService<THostedService>(provider.GetRequiredKeyedService<THostedService>(key)));
+        services.AddHostedService(provider => provider.GetRequiredService<DeferredHostedService<THostedService>>());
+        return services;
+    }
+
+    private static bool IsHostedService<THostedService>(ServiceDescriptor descriptor) =>
+        descriptor.ServiceType == typeof(IHostedService) && !descriptor.IsKeyedService
+        && (descriptor.ImplementationType == typeof(THostedService)
+            || descriptor.ImplementationInstance is THostedService
+            || descriptor.ImplementationFactory?.Method.ReturnType == typeof(THostedService));
 
     private static ServiceLifetime RemoveAll(IServiceCollection services, Type serviceType, object? serviceKey, string call) =>
         RemoveWhere(services, call, descriptor => descriptor.ServiceType == serviceType

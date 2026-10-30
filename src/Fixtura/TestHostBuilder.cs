@@ -46,6 +46,7 @@ public sealed class TestHostBuilder
         _testOutputLevel = parent._testOutputLevel;
         _clock = parent._clock;
         _clockStart = parent._clockStart;
+        FailsOnBackgroundServiceCrash = parent.FailsOnBackgroundServiceCrash;
     }
 
     /// <summary>Typed swaps of the app's service registrations.</summary>
@@ -69,6 +70,8 @@ public sealed class TestHostBuilder
     internal bool IsOverride { get; }
 
     internal FakeTimeProvider? Clock => _clock;
+
+    internal bool FailsOnBackgroundServiceCrash { get; private set; }
 
     internal bool LogsToTestOutput => _testOutputLevel is not null;
 
@@ -197,6 +200,16 @@ public sealed class TestHostBuilder
         FakeTimeProvider clock = _clock = new FakeTimeProvider(_clockStart);
         Users.Clock = clock;
         Services.Configure(services => FakeClock.AddTo(services, clock));
+        return this;
+    }
+
+    /// <summary>
+    /// Fails the fixture's next client, scope, reset or disposal once one of the app's background services has crashed,
+    /// instead of the crash showing only in the log.
+    /// </summary>
+    public TestHostBuilder FailOnBackgroundServiceCrash()
+    {
+        FailsOnBackgroundServiceCrash = true;
         return this;
     }
 

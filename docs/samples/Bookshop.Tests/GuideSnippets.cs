@@ -21,6 +21,17 @@ internal static class GuideSnippets
         // </fake-clock>
     }
 
+    public static async Task DeferredService(TestHostBuilder host, TestHost<Program> shop)
+    {
+        // <deferred-service>
+        host.Services.DeferHostedService<RestockReminder>();
+        host.FailOnBackgroundServiceCrash();
+
+        // In a test, once the stock it reminds about is in place:
+        RestockReminder reminder = await shop.StartHostedServiceAsync<RestockReminder>();
+        // </deferred-service>
+    }
+
     public static void ServiceSwaps(TestHostBuilder host)
     {
         // <service-swaps>

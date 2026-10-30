@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -18,6 +19,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 {
     private readonly TestHostBuilder _builder;
     private readonly Lock _gate = new();
+
+    // The app's background services, checked for a crash whenever a test uses the fixture.
+    private readonly List<BackgroundService> _watched = [];
     private Task<HostFactory>? _build;
     private string? _skipReason;
 
@@ -42,6 +46,21 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             "BaseAddress needs host.Server = ServerKind.Kestrel; on TestServer use CreateClientAsync.");
 
     private HostFactory Factory => FactoryAsync().GetAwaiter().GetResult();
+
+    private void ThrowIfABackgroundServiceCrashed()
+    {
+        BackgroundService? crashed;
+        lock (_gate)
+        {
+            crashed = _watched.FirstOrDefault(service => service.ExecuteTask?.IsFaulted == true);
+        }
+
+        if (crashed is not null)
+        {
+            Exception error = crashed.ExecuteTask!.Exception!.InnerException!;
+            throw new InvalidOperationException($"The app's background service {crashed.GetType().Name} crashed: {error.Message}", error);
+        }
+    }
 
     // Building on first use, after InitializeAsync, lets a missing resource skip the test instead of failing the fixture.
     // The host builds once, on a thread of its own: its start-up waits on async work, and callers that block thread-pool
@@ -88,6 +107,14 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             {
                 _ = factory.Services;
             }
+
+            if (_builder.FailsOnBackgroundServiceCrash)
+            {
+                lock (_gate)
+                {
+                    _watched.AddRange(factory.Services.GetServices<IHostedService>().OfType<BackgroundService>());
+                }
+            }
         }
         catch
         {
@@ -126,6 +153,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     public async Task<HttpClient> CreateClientAsync(TestUser? user, TestClientOptions options)
     {
         HostFactory factory = await FactoryAsync();
+        ThrowIfABackgroundServiceCrashed();
         SignedInUser? signedIn = user is null ? null : await _builder.Users.SignInAsync(user, factory.Services, options.Scheme);
 
         // WebApplicationFactory records every client it creates in a list that isn't thread-safe.
@@ -164,7 +192,35 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         }
     }
 
-    public IServiceScope CreateScope() => Services.CreateScope();
+    public IServiceScope CreateScope()
+    {
+        IServiceProvider services = Services;
+        ThrowIfABackgroundServiceCrashed();
+        return services.CreateScope();
+    }
+
+    /// <summary>
+    /// Starts a hosted service the fixture deferred with <c>host.Services.DeferHostedService&lt;T&gt;()</c>, and returns it.
+    /// A <see cref="BackgroundService"/>'s <c>ExecuteTask</c> then shows when its work ends. The host stops it when it stops.
+    /// </summary>
+    public async Task<THostedService> StartHostedServiceAsync<THostedService>(CancellationToken cancellationToken = default)
+        where THostedService : class, IHostedService
+    {
+        HostFactory factory = await FactoryAsync();
+        var deferred = factory.Services.GetService<DeferredHostedService<THostedService>>() ?? throw new InvalidOperationException(
+            $"{typeof(THostedService).Name} isn't deferred: add host.Services.DeferHostedService<{typeof(THostedService).Name}>().");
+        ThrowIfABackgroundServiceCrashed();
+        await deferred.StartNowAsync(cancellationToken);
+        if (_builder.FailsOnBackgroundServiceCrash && deferred.Service is BackgroundService background)
+        {
+            lock (_gate)
+            {
+                _watched.Add(background);
+            }
+        }
+
+        return deferred.Service;
+    }
 
     /// <summary>The app's clock, which a test advances with <c>Advance</c> or <c>SetUtcNow</c>; set up with <c>host.UseFakeClock()</c>.</summary>
     public FakeTimeProvider Clock =>
@@ -185,6 +241,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
         // Before the host is built the app hasn't run, so only the resources can hold data.
         HostFactory? factory = _build is { IsCompletedSuccessfully: true } ? _build.Result : null;
+        ThrowIfABackgroundServiceCrashed();
         return _builder.ResetAsync(factory?.Services);
     }
 
@@ -217,6 +274,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         }
 
         GC.SuppressFinalize(this);
+        ThrowIfABackgroundServiceCrashed();
     }
 
     private sealed class HostFactory(Action<IWebHostBuilder> configure) : WebApplicationFactory<TProgram>

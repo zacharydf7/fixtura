@@ -11,11 +11,14 @@ Fixtura.TestClientOptions.Scheme.init -> void
 Fixtura.TestClientOptions.TestClientOptions() -> void
 Fixtura.TestHost<TProgram>.Clock.get -> Microsoft.Extensions.Time.Testing.FakeTimeProvider!
 Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
+Fixtura.TestHost<TProgram>.StartHostedServiceAsync<THostedService>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<THostedService!>!
 Fixtura.TestHostBuilder.Environment.get -> string?
 Fixtura.TestHostBuilder.Environment.set -> void
+Fixtura.TestHostBuilder.FailOnBackgroundServiceCrash() -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.UseFakeClock(System.DateTimeOffset? start = null) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
+Fixtura.TestServices.DeferHostedService<THostedService>() -> Fixtura.TestServices!
 Fixtura.TestUsers.Scheme.get -> string?
 Fixtura.TestUsers.Scheme.set -> void

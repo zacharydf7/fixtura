@@ -88,11 +88,17 @@ public sealed class ApiFixture : TestHost<Program>
 | `ReplaceKeyed<TService, TImplementation>(key)` | Replaces one keyed registration; other keys stay |
 | `Remove<TService>()` | Removes every registration of the service |
 | `RemoveHostedService<THostedService>()` | Removes a hosted service registered with `AddHostedService<T>()` or its factory overload |
+| `DeferHostedService<THostedService>()` | Keeps a hosted service from starting with the host, until a test calls `api.StartHostedServiceAsync<T>()` |
 | `Configure(services => ...)` | Anything else, as plain `IServiceCollection` code |
 
 Every typed swap throws `NothingMatchedException` when the app has no matching registration, so a renamed service fails
-the test run instead of silently testing the wrong thing. The same swaps exist as `IServiceCollection` extension methods
-for code that builds its own factory.
+the test run instead of silently testing the wrong thing. The same swaps, except `DeferHostedService`, exist as
+`IServiceCollection` extension methods for code that builds its own factory.
+
+A deferred service starts when a test has put its data in place, and the host still stops it. A `BackgroundService`'s
+`ExecuteTask` completes when its `ExecuteAsync` returns, so awaiting it waits out a worker that makes one pass; a worker
+that loops runs until the host stops it. `host.FailOnBackgroundServiceCrash()` fails the
+fixture's next client, scope, reset or disposal once one of the app's background services has crashed.
 
 ## Swapping DbContexts
 
