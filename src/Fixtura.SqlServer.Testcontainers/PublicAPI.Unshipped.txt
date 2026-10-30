@@ -1,0 +1,8 @@
+#nullable enable
+const Fixtura.SqlServerContainer.DefaultImage = "mcr.microsoft.com/mssql/server:2022-latest" -> string!
+Fixtura.SqlServerContainer
+Fixtura.SqlServerContainer.extension(Fixtura.SqlServerSource!)
+static Fixtura.SqlServerContainer.Container(string! image = "mcr.microsoft.com/mssql/server:2022-latest") -> Fixtura.SqlServerSource!
+static Fixtura.SqlServerContainer.EnvironmentVariableOrContainer(string! name, string! image = "mcr.microsoft.com/mssql/server:2022-latest") -> Fixtura.SqlServerSource!
+static Fixtura.SqlServerContainer.extension(Fixtura.SqlServerSource!).Container(string! image = "mcr.microsoft.com/mssql/server:2022-latest") -> Fixtura.SqlServerSource!
+static Fixtura.SqlServerContainer.extension(Fixtura.SqlServerSource!).EnvironmentVariableOrContainer(string! name, string! image = "mcr.microsoft.com/mssql/server:2022-latest") -> Fixtura.SqlServerSource!

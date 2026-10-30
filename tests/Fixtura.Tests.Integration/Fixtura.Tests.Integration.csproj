@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\src\Fixtura\Fixtura.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.EntityFrameworkCore\Fixtura.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.SqlServer\Fixtura.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\Fixtura.SqlServer.Testcontainers\Fixtura.SqlServer.Testcontainers.csproj" />
     <ProjectReference Include="..\SampleApps\SampleApp\SampleApp.csproj" />
     <ProjectReference Include="..\SampleApps\AuthorityJwtApp\AuthorityJwtApp.csproj" />
     <ProjectReference Include="..\SampleApps\CookieApp\CookieApp.csproj" />

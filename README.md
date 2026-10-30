@@ -234,6 +234,29 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
   positive. A LocalDB instance that isn't running yet can need longer on its first connection. The server is checked
   once per test run, so an unreachable one costs the timeout once, not once per fixture.
 - Databases that a killed test run left behind are dropped once they're an hour old.
+- `SqlServerSource.From(description, async () => ...)` takes a server from your own code. Returning null, or throwing,
+  skips the fixture's tests with the reason, or fails them when the `RequiredWhenSet` variable is set.
+
+### SQL Server in a container
+
+The `Fixtura.SqlServer.Testcontainers` package runs SQL Server in Docker, so a machine without one still runs the SQL
+tests:
+
+```csharp
+SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
+{
+    Source = SqlServerSource.EnvironmentVariableOrContainer("TEST_SQLSERVER"),
+    RequiredWhenSet = "TEST_SQLSERVER_REQUIRED"
+});
+```
+
+- `SqlServerSource.Container(image)` starts one container on first use and shares it with every fixture in the test
+  run; each fixture still gets its own databases. Testcontainers' resource reaper removes the container when the run
+  ends; with the reaper turned off, as some CI agents and Podman setups do, remove it yourself.
+- `SqlServerSource.EnvironmentVariableOrContainer(name, image)` uses the variable's server when it's set, such as a CI
+  service, and a container otherwise.
+- The image is `SqlServerContainer.DefaultImage` (SQL Server 2022) unless given. Without Docker, the fixture's tests skip
+  with the reason, or fail when the `RequiredWhenSet` variable is set.
 
 ## Resetting data between tests
 

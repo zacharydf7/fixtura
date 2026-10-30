@@ -36,8 +36,8 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.ReadyTimeout, TimeSpan.Zero, nameof(SqlServerOptions.ReadyTimeout));
         _prefix = namePrefix;
-        string? server = options.Source.Resolve();
-        string? reason = server is null ? $"No SQL Server is configured in {options.Source}." : await CheckOnceAsync(server);
+        (string? server, string? reason) = await ResolveAsync();
+        reason ??= await CheckOnceAsync(server!);
         if (server is not null && reason is null)
         {
             _server = server;
@@ -88,6 +88,20 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     {
         string? value = options.RequiredWhenSet is null ? null : Environment.GetEnvironmentVariable(options.RequiredWhenSet);
         return value is not null && (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // A source that throws, such as a container that can't start, is unavailable like one that finds no server.
+    private async Task<(string? Server, string? Reason)> ResolveAsync()
+    {
+        try
+        {
+            string? server = await options.Source.ResolveAsync();
+            return server is null ? (null, $"No SQL Server is configured in {options.Source}.") : (server, null);
+        }
+        catch (Exception exception)
+        {
+            return (null, $"{options.Source} has no SQL Server: {exception.Message}");
+        }
     }
 
     private Task<string?> CheckOnceAsync(string server)

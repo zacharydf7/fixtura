@@ -68,6 +68,48 @@ public class SqlServerGateTests
     }
 
     [Fact]
+    public async Task ProvisionAsync_ShouldSayNoServerIsConfigured_WhenACustomSourceFindsNone()
+    {
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.From("the test's source", () => Task.FromResult<string?>(null))
+        });
+
+        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+
+        Assert.Equal("No SQL Server is configured in the test's source.", reason);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldReturnTheSourcesError_WhenACustomSourceThrows()
+    {
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.From("the test's source", () => throw new InvalidOperationException("Docker isn't running."))
+        });
+
+        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+
+        Assert.Equal("the test's source has no SQL Server: Docker isn't running.", reason);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldThrow_WhenACustomSourceThrowsAndTheServerIsRequired()
+    {
+        string required = $"FIXTURA_TEST_REQUIRED_{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(required, "true");
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.From("the test's source", () => throw new InvalidOperationException("Docker isn't running.")),
+            RequiredWhenSet = required
+        });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => sql.ProvisionAsync("fixtura_00000000"));
+
+        Assert.StartsWith("the test's source has no SQL Server: Docker isn't running.", error.Message);
+    }
+
+    [Fact]
     public async Task ProvisionAsync_ShouldRejectTheReadyTimeout_WhenItIsNotPositive()
     {
         await using SqlServerResource sql = UnreachableServer(required: null, TimeSpan.Zero);

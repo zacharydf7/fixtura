@@ -19,5 +19,6 @@ Fixtura.SqlServerSource
 Fixtura.SqlServerTestHostExtensions
 override Fixtura.SqlServerSource.ToString() -> string!
 static Fixtura.SqlServerSource.EnvironmentVariableOrLocalDb(string! name) -> Fixtura.SqlServerSource!
+static Fixtura.SqlServerSource.From(string! description, System.Func<System.Threading.Tasks.Task<string?>!>! resolveAsync) -> Fixtura.SqlServerSource!
 static Fixtura.SqlServerSource.LocalDb.get -> Fixtura.SqlServerSource!
 static Fixtura.SqlServerTestHostExtensions.UseSqlServer(this Fixtura.TestHostBuilder! host, Fixtura.SqlServerOptions! options) -> Fixtura.SqlServerResource!

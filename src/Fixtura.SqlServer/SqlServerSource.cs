@@ -5,23 +5,30 @@ public sealed class SqlServerSource
 {
     private const string LocalDbServer = @"Server=(localdb)\MSSQLLocalDB;Integrated Security=true;TrustServerCertificate=true";
 
-    private readonly Func<string?> _resolve;
+    private readonly Func<Task<string?>> _resolve;
     private readonly string _description;
 
-    private SqlServerSource(Func<string?> resolve, string description)
+    private SqlServerSource(Func<Task<string?>> resolve, string description)
     {
         _resolve = resolve;
         _description = description;
     }
 
     /// <summary>SQL Server LocalDB's default instance, which ships with Visual Studio on Windows.</summary>
-    public static SqlServerSource LocalDb { get; } = new(() => LocalDbServer, @"(localdb)\MSSQLLocalDB");
+    public static SqlServerSource LocalDb { get; } = From(@"(localdb)\MSSQLLocalDB", () => Task.FromResult<string?>(LocalDbServer));
 
     /// <summary>The connection string in the environment variable, or LocalDB when the variable isn't set.</summary>
     public static SqlServerSource EnvironmentVariableOrLocalDb(string name) =>
-        new(() => Environment.GetEnvironmentVariable(name) ?? LocalDbServer, $"{name} or LocalDB");
+        From($"{name} or LocalDB", () => Task.FromResult<string?>(Environment.GetEnvironmentVariable(name) ?? LocalDbServer));
 
-    internal string? Resolve() => _resolve();
+    /// <summary>
+    /// A server your own code provides, such as one it starts. Return a connection string that names a server, or null when
+    /// there is none. Either null or an exception skips the fixture's tests with the reason, or fails them when required.
+    /// </summary>
+    /// <param name="description">Names the source in skip reasons, such as "a SQL Server container".</param>
+    public static SqlServerSource From(string description, Func<Task<string?>> resolveAsync) => new(resolveAsync, description);
+
+    internal Task<string?> ResolveAsync() => _resolve();
 
     public override string ToString() => _description;
 }
