@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Fixtura.Tests.Unit;
@@ -32,6 +33,22 @@ public class TestOutputLoggerTests
         Assert.Empty(messages);
     }
 
+    // The minimum only filters what's written; it mustn't make the app's logger factory look unable to reach the test.
+    [Fact]
+    public void EnsureReachable_ShouldPass_WhenTheMinimumIsNoneAndTheAppsFactoryPassesLogsOn()
+    {
+        var messages = new List<string>();
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<ILoggerProvider>(new TestOutputLoggerProvider(LogLevel.None, messages.Add))
+            .AddSingleton<ILoggerFactory>(provider => new AppLoggerFactory(provider.GetServices<ILoggerProvider>()))
+            .BuildServiceProvider();
+
+        Exception? error = Record.Exception(() => TestOutputLoggerProvider.EnsureReachable(services));
+
+        Assert.Null(error);
+        Assert.Empty(messages);
+    }
+
     [Fact]
     public void Log_ShouldSkipTheLog_WhenItIsBelowTheMinimum()
     {
@@ -43,3 +60,6 @@ public class TestOutputLoggerTests
         Assert.DoesNotContain("Order placed.", TestContext.Current.TestOutputHelper!.Output);
     }
 }
+
+// A logger factory of the app's own, as Serilog sets up, passing logs to the providers it's given.
+public sealed class AppLoggerFactory(IEnumerable<ILoggerProvider> providers) : LoggerFactory(providers);

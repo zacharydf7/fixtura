@@ -80,6 +80,8 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
                 {
                     _ = factory.Services;
                 }
+
+                TestOutputLoggerProvider.EnsureReachable(factory.Services);
             }
             else
             {

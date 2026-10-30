@@ -17,6 +17,31 @@ internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<str
         services.Configure<TestServerOptions>(options => options.PreserveExecutionContext = true);
     }
 
+    // A category the provider recognizes but never writes, logged once to check that the app's logs reach it.
+    private const string ProbeCategory = "Fixtura.LogToTestOutput";
+
+    private bool _probed;
+
+    // Apps can swap in a logger factory of their own, as Serilog does, which may ignore the providers a test adds. The
+    // framework's factory always uses them, so only a replaced one gets the probe, which its other sinks see too.
+    public static void EnsureReachable(IServiceProvider services)
+    {
+        ILoggerFactory factory = services.GetRequiredService<ILoggerFactory>();
+        if (factory.GetType() == typeof(LoggerFactory))
+        {
+            return;
+        }
+
+        TestOutputLoggerProvider provider = services.GetServices<ILoggerProvider>().OfType<TestOutputLoggerProvider>().Last();
+        factory.CreateLogger(ProbeCategory).Log(LogLevel.Critical, "Checking that the app's logs reach the test output.");
+        if (!provider._probed)
+        {
+            throw new InvalidOperationException($"LogToTestOutput can't see the app's logs: its logger factory, "
+                + $"{factory.GetType().FullName}, doesn't pass them to the providers a test adds. With Serilog, pass "
+                + "writeToProviders: true to UseSerilog or AddSerilog.");
+        }
+    }
+
     private LogLevel MinimumLevel { get; } = minimumLevel;
 
     public ILogger CreateLogger(string categoryName) => new TestOutputLogger(categoryName, this);
@@ -55,6 +80,12 @@ internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<str
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
+            if (category == ProbeCategory)
+            {
+                provider._probed = true;
+                return;
+            }
+
             if (!IsEnabled(logLevel))
             {
                 return;

@@ -215,6 +215,8 @@ host.LogToTestOutput(LogLevel.Warning); // or a higher minimum
 - Each request runs in its test's execution context, so the test's culture and other ambient state reach the app.
 - Logs that belong to no test, such as start-up's, a background service's or those of a request over Kestrel, become
   xUnit diagnostic messages, which show when diagnostic messages are turned on.
+- An app with a logger factory of its own, as Serilog sets up, fails the host build with an error that names the fix
+  unless the factory passes logs on to other providers: with Serilog, `UseSerilog(..., writeToProviders: true)`.
 
 ## Missing infrastructure
 

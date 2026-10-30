@@ -143,7 +143,8 @@ public sealed class TestHostBuilder
     /// The app's own logging settings still filter them, and <paramref name="minimumLevel"/> raises the floor. Each request
     /// runs in its test's execution context, so the test's culture and other ambient state reach the app. Logs that belong
     /// to no test, such as start-up's, a background service's or a request's over Kestrel, become xUnit diagnostic
-    /// messages.
+    /// messages. The host build fails if the app's logger factory doesn't pass logs on, as Serilog's doesn't without
+    /// <c>writeToProviders: true</c>.
     /// </summary>
     public TestHostBuilder LogToTestOutput(LogLevel minimumLevel = LogLevel.Information)
     {
