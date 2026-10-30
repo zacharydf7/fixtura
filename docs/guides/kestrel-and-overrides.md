@@ -9,8 +9,8 @@ where a browser, such as one driven by Playwright, or another process reaches it
 `CreateClientAsync` work as before, except that Kestrel serves plain HTTP: an app whose cookie is Secure stops
 receiving it once it renews the cookie.
 
-Requests over Kestrel arrive from a socket, not from a test, so their logs become diagnostic messages; see
-[The app's logs](logs.md).
+Requests from the fixture's clients log to their test over Kestrel too. Requests from anywhere else, such as a browser
+at `BaseAddress`, belong to no test, so their logs become diagnostic messages; see [The app's logs](logs.md).
 
 ## Per-test overrides
 

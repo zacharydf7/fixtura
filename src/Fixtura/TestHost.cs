@@ -197,6 +197,11 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
                 handlers.Add(new RedirectHandler());
             }
 
+            if (_builder.LogsToTestOutput)
+            {
+                handlers.Add(new TestRequests.TagHandler());
+            }
+
             handlers.Add(new CookieContainerHandler(cookies));
             HttpClient client = factory.CreateDefaultClient(address, [.. handlers]);
             if (signedIn?.BearerToken is not null)
@@ -238,10 +243,13 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             ? new SocketsHttpHandler { UseCookies = false }
             : factory.Server.CreateHandler();
         bool asHttps = _builder.Server == ServerKind.TestServer && address.Scheme == Uri.UriSchemeHttps;
-        return new SignedInHandler(signedIn?.BearerToken, asHttps)
+        HttpMessageHandler inner = new CookieContainerHandler(cookies) { InnerHandler = server };
+        if (_builder.LogsToTestOutput)
         {
-            InnerHandler = new CookieContainerHandler(cookies) { InnerHandler = server }
-        };
+            inner = new TestRequests.TagHandler { InnerHandler = inner };
+        }
+
+        return new SignedInHandler(signedIn?.BearerToken, asHttps) { InnerHandler = inner };
     }
 
     // TestServer accepts any scheme, so a cookie user's requests go as HTTPS, where a renewed Secure cookie keeps being

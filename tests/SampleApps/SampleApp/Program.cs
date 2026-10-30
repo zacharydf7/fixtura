@@ -82,6 +82,7 @@ app.MapGet("/rates/{currency}", (string currency, IHttpClientFactory http) =>
     http.CreateClient("rates").GetFromJsonAsync<Rate>($"today/{currency}"));
 
 app.MapGet("/home", () => Results.Redirect("/ping"));
+app.MapGet("/culture", () => System.Globalization.CultureInfo.CurrentCulture.Name);
 app.MapPost("/parcels/{number}/track", (string number, TrackingClient tracking) => tracking.TrackAsync(number));
 
 if (reportsEnabled)

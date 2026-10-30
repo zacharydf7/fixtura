@@ -11,11 +11,12 @@ output when it fails, so a 500 comes with the app's own explanation.
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#logs-warnings)]
 
-- Each request runs in its test's execution context, which is how a log finds its test. The test's culture and other
-  ambient state reach the app too.
-- Logs that belong to no test, such as start-up's, a background service's or those of a request over Kestrel, become
-  xUnit diagnostic messages. They show when diagnostic messages are turned on, for example with `"diagnosticMessages":
-  true` in `xunit.runner.json`.
+- The fixture's clients add a header to each request that ties it to its test, which is how a log finds its test, on
+  the test server and over Kestrel. The app never sees the header and behaves as it does without logging.
+- Logs that belong to no test become xUnit diagnostic messages: start-up's, a background service's, and those the server
+  writes around the app's middleware, such as each request's start and finish lines or Kestrel's report of an exception
+  the app didn't handle. They show when diagnostic messages are turned on, for example with `"diagnosticMessages": true`
+  in `xunit.runner.json`.
 
 Logging to test output is off unless a fixture asks for it.
 

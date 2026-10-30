@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Globalization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,6 +11,44 @@ namespace Fixtura.Tests.Integration.Hosting;
 public sealed class LoggingFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host) => host.LogToTestOutput();
+}
+
+public sealed class KestrelLoggingFixture : TestHost<Program>
+{
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Server = ServerKind.Kestrel;
+        host.LogToTestOutput();
+    }
+}
+
+// Middleware of the app's own from a startup filter, as a library adds, which records the headers it sees.
+public sealed class HeaderRecordingFixture : TestHost<Program>
+{
+    public ConcurrentBag<string> Seen { get; } = [];
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.LogToTestOutput();
+        host.Services.Configure(services => services.AddSingleton<IStartupFilter>(new HeaderRecordingFilter(Seen)));
+    }
+}
+
+public sealed class HeaderRecordingFilter(ConcurrentBag<string> seen) : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use(async (context, nextMiddleware) =>
+        {
+            foreach (string header in context.Request.Headers.Keys)
+            {
+                seen.Add(header);
+            }
+
+            await nextMiddleware(context);
+        });
+        next(app);
+    };
 }
 
 public sealed class WarningLoggingFixture : TestHost<Program>
@@ -83,7 +125,48 @@ public class LoggingTests(LoggingFixture api) : IClassFixture<LoggingFixture>
 
         await client.GetAsync("/ping", TestContext.Current.CancellationToken);
 
-        Assert.DoesNotContain("Request starting", Output());
+        Assert.DoesNotContain("Executing endpoint", Output());
+    }
+
+    [Fact]
+    public async Task LogToTestOutput_ShouldWriteARedirectsLog_WhenTheClientFollowsTheRedirect()
+    {
+        HttpClient client = await api.CreateClientAsync();
+
+        await client.GetAsync("/home", TestContext.Current.CancellationToken);
+
+        Assert.Contains("Information Program: Pinged.", Output());
+    }
+
+    [Fact]
+    public async Task LogToTestOutput_ShouldWriteTheAppsLog_WhenTheTestSendsThroughAHandler()
+    {
+        using HttpMessageHandler handler = await api.CreateHandlerAsync();
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
+
+        await client.GetAsync("/ping", TestContext.Current.CancellationToken);
+
+        Assert.Contains("Information Program: Pinged.", Output());
+    }
+
+    // Running requests in the test's execution context would hand the app the test's culture.
+    [Fact]
+    public async Task LogToTestOutput_ShouldLeaveTheTestsCultureOut_WhenTheTestChangedIt()
+    {
+        HttpClient client = await api.CreateClientAsync();
+        CultureInfo culture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("is-IS");
+        string requestCulture;
+        try
+        {
+            requestCulture = await client.GetStringAsync("/culture", TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
+
+        Assert.NotEqual("is-IS", requestCulture);
     }
 
     [Fact]
@@ -102,6 +185,32 @@ public class LoggingTests(LoggingFixture api) : IClassFixture<LoggingFixture>
     }
 
     private static string Output() => TestContext.Current.TestOutputHelper!.Output;
+}
+
+public class KestrelLoggingTests(KestrelLoggingFixture api) : IClassFixture<KestrelLoggingFixture>
+{
+    [Fact]
+    public async Task LogToTestOutput_ShouldWriteTheAppsLogToTheTestsOutput_WhenTheAppRunsOnKestrel()
+    {
+        HttpClient client = await api.CreateClientAsync();
+
+        await client.GetAsync("/ping", TestContext.Current.CancellationToken);
+
+        Assert.Contains("Information Program: Pinged.", TestContext.Current.TestOutputHelper!.Output);
+    }
+}
+
+public class HeaderRecordingTests(HeaderRecordingFixture api) : IClassFixture<HeaderRecordingFixture>
+{
+    [Fact]
+    public async Task LogToTestOutput_ShouldKeepItsHeaderFromOtherStartupFilters_WhenTheAppHasOne()
+    {
+        HttpClient client = await api.CreateClientAsync();
+
+        await client.GetAsync("/ping", TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(api.Seen, header => header.StartsWith("Fixtura", StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public class WarningLoggingTests(WarningLoggingFixture api) : IClassFixture<WarningLoggingFixture>

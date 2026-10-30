@@ -293,9 +293,9 @@ host.LogToTestOutput(LogLevel.Warning); // or a higher minimum
 
 - Each request's logs go to the output of the test that sent it, which xUnit shows when the test fails, so a 500 comes
   with the app's reason. The app's own `Logging` settings still filter them; change them for tests with `host.Settings`.
-- Each request runs in its test's execution context, so the test's culture and other ambient state reach the app.
-- Logs that belong to no test, such as start-up's, a background service's or those of a request over Kestrel, become
-  xUnit diagnostic messages, which show when diagnostic messages are turned on.
+- A header the app never sees ties each request to its test, so the app behaves as it does without logging.
+- Logs that belong to no test, such as start-up's, a background service's or the server's own request start and finish
+  lines, become xUnit diagnostic messages, which show when diagnostic messages are turned on.
 - An app with a logger factory of its own, as Serilog sets up, fails the host build with an error that names the fix
   unless the factory passes logs on to other providers: with Serilog, `UseSerilog(..., writeToProviders: true)`.
 

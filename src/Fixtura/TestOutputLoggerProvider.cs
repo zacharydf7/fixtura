@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -12,9 +11,8 @@ internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<str
     public static void AddTo(IServiceCollection services, LogLevel minimumLevel, Action<string> sendDiagnosticMessage)
     {
         services.AddLogging(logging => logging.AddProvider(new TestOutputLoggerProvider(minimumLevel, sendDiagnosticMessage)));
-
-        // A request then runs in its test's context, which is how a log finds the test's output.
-        services.Configure<TestServerOptions>(options => options.PreserveExecutionContext = true);
+        // Registered first, so its middleware runs ahead of every other filter's and no middleware sees the header.
+        services.Insert(0, ServiceDescriptor.Singleton(TestRequests.StartupFilter));
     }
 
     // A category the provider recognizes but never writes, logged once to check that the app's logs reach it.
@@ -52,7 +50,7 @@ internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<str
 
     private void Write(string line)
     {
-        ITestContext context = TestContext.Current;
+        ITestContext context = TestRequests.Sender ?? TestContext.Current;
         ITestOutputHelper? output = context.TestStatus == TestEngineStatus.Running ? context.TestOutputHelper : null;
         try
         {
