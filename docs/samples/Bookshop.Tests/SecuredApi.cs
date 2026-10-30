@@ -1,14 +1,18 @@
+// <features>
 using System.Net;
 using System.Net.Http.Json;
+using Fixtura;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookshop.Tests;
 
-// <features>
 public sealed class InMemoryShop : ITestHostFeature
 {
-    public void Configure(TestHostBuilder host) =>
+    public void Configure(TestHostBuilder host)
+    {
         host.Services.ReplaceDbContext<ShopDb>(db => db.UseInMemoryDatabase(host.UniqueName("Shop")));
+        host.RecreateInMemoryDatabasesOnReset();
+    }
 }
 
 public sealed class QuietBackground : ITestHostFeature
@@ -40,9 +44,9 @@ public sealed class CustomerFixture : TestHost<Program>
 }
 // </customer-fixture>
 
+// <order-tests>
 public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
 {
-    // <anonymous>
     [Fact]
     public async Task PlaceOrder_ShouldBeUnauthorized_WhenNobodySignedIn()
     {
@@ -52,9 +56,7 @@ public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
-    // </anonymous>
 
-    // <forbidden>
     [Fact]
     public async Task PlaceOrder_ShouldBeForbidden_WhenTheUserIsNoCustomer()
     {
@@ -64,9 +66,7 @@ public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
-    // </forbidden>
 
-    // <customer>
     [Fact]
     public async Task PlaceOrder_ShouldRecordTheCustomerAndTime_WhenACustomerOrders()
     {
@@ -77,5 +77,5 @@ public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
         Order? order = await response.Content.ReadFromJsonAsync<Order>(TestContext.Current.CancellationToken);
         Assert.Equal(("ann", CustomerFixture.Now), (order!.Customer, order.PlacedAt));
     }
-    // </customer>
 }
+// </order-tests>

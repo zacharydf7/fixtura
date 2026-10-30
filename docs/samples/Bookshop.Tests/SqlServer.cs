@@ -1,10 +1,11 @@
+// <sql-fixture>
 using System.Net;
 using System.Net.Http.Json;
+using Fixtura;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookshop.Tests;
 
-// <sql-fixture>
 public sealed class SqlShopFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
@@ -59,9 +60,7 @@ public class SqlOrderTests(SqlShopFixture shop) : IClassFixture<SqlShopFixture>,
     public async ValueTask InitializeAsync() => await shop.ResetDataAsync();
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    // </reset>
 
-    // <mine>
     [Fact]
     public async Task MyOrders_ShouldListOnlyTheCustomersOwn_WhenOthersOrderedToo()
     {
@@ -74,9 +73,7 @@ public class SqlOrderTests(SqlShopFixture shop) : IClassFixture<SqlShopFixture>,
 
         Assert.Equal(1, Assert.Single(orders!).BookId);
     }
-    // </mine>
 
-    // <numbering>
     [Fact]
     public async Task PlaceOrder_ShouldNumberTheFirstOrderOne_WhenEachTestStartsFromAReset()
     {
@@ -86,9 +83,7 @@ public class SqlOrderTests(SqlShopFixture shop) : IClassFixture<SqlShopFixture>,
 
         Assert.Equal("/orders/1", response.Headers.Location?.OriginalString);
     }
-    // </numbering>
 
-    // <kept>
     [Fact]
     public async Task GetBooks_ShouldStillListTheCatalog_WhenTheBooksTableIsKept()
     {
@@ -98,5 +93,5 @@ public class SqlOrderTests(SqlShopFixture shop) : IClassFixture<SqlShopFixture>,
 
         Assert.Equal(2, books!.Count);
     }
-    // </kept>
 }
+// </reset>

@@ -42,4 +42,5 @@ page.
 ## Data from one test shows up in another
 
 Tests that share a fixture share its data. Reset it before each test with [`ResetDataAsync`](resetting-data.md), or
-give the tests their own fixture.
+give the tests their own fixture. On EF Core's in-memory provider, the reset only empties the databases if the fixture
+calls `host.RecreateInMemoryDatabasesOnReset()`.

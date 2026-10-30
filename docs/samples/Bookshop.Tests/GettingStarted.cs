@@ -1,9 +1,10 @@
+// <fixture>
 using System.Net.Http.Json;
+using Fixtura;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookshop.Tests;
 
-// <fixture>
 public sealed class ShopFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)

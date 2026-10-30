@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Claims;
+using Fixtura;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

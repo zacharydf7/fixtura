@@ -32,20 +32,13 @@ list, and the tests start depending on their order. Reset before each test with 
 [!code-csharp[](../samples/Bookshop.Tests/SqlServer.cs#reset)]
 
 `ResetDataAsync` empties every table in the fixture's databases in foreign-key order and restarts identity columns. It
-deletes rows rather than recreating databases, so it takes milliseconds. Now each test sees only its own orders:
-
-[!code-csharp[](../samples/Bookshop.Tests/SqlServer.cs#mine)]
-
-Because identity columns restart, the first order in every test is order 1:
-
-[!code-csharp[](../samples/Bookshop.Tests/SqlServer.cs#numbering)]
+deletes rows rather than recreating databases, so it takes milliseconds. So in the first test, each customer sees only
+the orders they placed, and because identity columns restart, the first order in the second test is order 1.
 
 ## Keep reference data
 
 Bookshop seeds its two books with `HasData`, so `EnsureCreated` inserts them once, at start-up. A reset would empty
-`Books` too, which is why the fixture lists it in `KeepOnReset`:
-
-[!code-csharp[](../samples/Bookshop.Tests/SqlServer.cs#kept)]
+`Books` too, which is why the fixture lists it in `KeepOnReset`, and why the last test still finds both books.
 
 EF Core's migrations history is always kept, so an app that migrates at start-up doesn't try to migrate again.
 
@@ -57,6 +50,8 @@ The `Fixtura.SqlServer.Testcontainers` package runs SQL Server in Docker. Swap t
 
 `EnvironmentVariableOrContainer` uses the variable's server when it's set, such as a CI service, and otherwise starts
 one container for the whole test run, shared by every fixture.
+
+The whole file is [SqlServer.cs](https://github.com/zacharydf7/fixtura/blob/main/docs/samples/Bookshop.Tests/SqlServer.cs).
 
 ## Next
 

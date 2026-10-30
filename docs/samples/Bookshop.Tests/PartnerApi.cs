@@ -1,9 +1,10 @@
+// <shipping-fixture>
 using System.Net;
 using System.Net.Http.Json;
+using Fixtura;
 
 namespace Bookshop.Tests;
 
-// <shipping-fixture>
 public sealed class ShippingFixture : TestHost<Program>
 {
     public HttpFake Shipping { get; private set; } = null!;
@@ -45,9 +46,7 @@ public class ShippingTests(ShippingFixture shop) : IClassFixture<ShippingFixture
 
         Assert.Empty(shop.Shipping.Requests);
     }
-    // </shipping-tests>
 
-    // <partner-down>
     [Fact]
     public async Task PlaceOrder_ShouldFail_WhenTheShippingPartnerIsDown()
     {
@@ -58,7 +57,9 @@ public class ShippingTests(ShippingFixture shop) : IClassFixture<ShippingFixture
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
-    // </partner-down>
-
-    private sealed record QuoteRequest(int BookId);
 }
+
+// The part of the app's quote request these tests read.
+public sealed record QuoteRequest(int BookId);
+// </shipping-tests>
+

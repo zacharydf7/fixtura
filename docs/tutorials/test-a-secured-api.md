@@ -7,9 +7,12 @@ order records, starting from the fixture in [Getting started](../getting-started
 ## Move shared setup into features
 
 More fixtures are coming, and each needs the in-memory database and the quiet background. A feature is setup that
-several fixtures share:
+several fixtures share. This tutorial's code goes in one file, which starts with them:
 
 [!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#features)]
+
+`RecreateInMemoryDatabasesOnReset()` lets `ResetDataAsync` empty the in-memory database, back to the catalog Bookshop
+seeds; without it, the in-memory provider keeps every test's data. A later tutorial resets before each test.
 
 A fixture adds features with `host.Use<TFeature>()`. Adding the same feature twice runs it once, so features can build
 on each other without double-registering anything.
@@ -30,19 +33,17 @@ The fixture for this tutorial combines the features, a fixed clock and one setti
 
 ## Anonymous and signed-in users
 
-Without a user, the client is anonymous:
+The tests use the fixture through `IClassFixture`:
 
-[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#anonymous)]
+[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#order-tests)]
 
-`TestUser.Named(...)` signs a user in through the app's own JWT bearer setup: Fixtura issues a token with the app's
-signing key, issuer and audience, so the app validates it as it would a real one. A user without the role is turned
-away:
+- Without a user, the client is anonymous, so the first test's order is turned away as unauthorized.
+- `TestUser.Named(...)` signs a user in through the app's own JWT bearer setup: Fixtura issues a token with the app's
+  signing key, issuer and audience, so the app validates it as it would a real one. The second test's user lacks the
+  `Customer` role and is forbidden.
+- The third test's customer places an order, which records who placed it and when.
 
-[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#forbidden)]
-
-And a customer's order records who placed it and when:
-
-[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#customer)]
+The whole file is [SecuredApi.cs](https://github.com/zacharydf7/fixtura/blob/main/docs/samples/Bookshop.Tests/SecuredApi.cs).
 
 ## What you have
 

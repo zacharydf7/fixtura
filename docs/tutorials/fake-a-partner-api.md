@@ -20,18 +20,19 @@ fakes the partner in-process, checks what Bookshop sent it, and tests what happe
 
 [!code-csharp[](../samples/Bookshop.Tests/PartnerApi.cs#shipping-tests)]
 
-`Requests` lists what the app sent through the client, with its headers and body; `Json<T>()` reads the body.
+`Requests` lists what the app sent through the client, with its headers and body; `Json<T>()` reads the body into a
+type of the test's own, here `QuoteRequest`.
 `ResetDataAsync` clears the recorded requests, so the second test can check that none were sent.
 
 ## Test the failure path
 
-A test can change a fake's response for itself:
+A test can change a fake's response for itself, as the last test does with
+`shop.Shipping.Respond(HttpMethod.Post, "/quotes", HttpStatusCode.ServiceUnavailable)`. The class's tests share the
+fixture, so the changed response would leak into the test that runs next. It doesn't, because `ResetDataAsync` also
+brings back the responses set in `Configure`. Since the app's logs go to the test's output, a failure here shows the
+app's exception and its reason.
 
-[!code-csharp[](../samples/Bookshop.Tests/PartnerApi.cs#partner-down)]
-
-The fixture is shared, so the changed response would leak into the next test. It doesn't, because `ResetDataAsync`
-also brings back the responses set in `Configure`. Since the app's logs go to the test's output, a failure here shows
-the app's exception and its reason.
+The whole file is [PartnerApi.cs](https://github.com/zacharydf7/fixtura/blob/main/docs/samples/Bookshop.Tests/PartnerApi.cs).
 
 ## What you have
 
