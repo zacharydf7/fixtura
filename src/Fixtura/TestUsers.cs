@@ -230,6 +230,3 @@ public sealed class TestUsers
         }
     }
 }
-
-// What signs a client in: a bearer token, or a cookie the app can later renew or clear.
-internal sealed record SignedInUser(string? BearerToken, Cookie? Cookie);

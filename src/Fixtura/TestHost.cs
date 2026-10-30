@@ -190,22 +190,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         // WebApplicationFactory records every client it creates in a list that isn't thread-safe.
         lock (_gate)
         {
-            // TestServer accepts any scheme, so a cookie user's client uses HTTPS, where a renewed Secure cookie keeps being
-            // sent, whatever base address the test gave.
-            Uri address = options.BaseAddress ?? factory.ClientOptions.BaseAddress;
-            if (signedIn?.Cookie is not null && _builder.Server == ServerKind.TestServer)
-            {
-                address = new UriBuilder(address) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
-            }
-
-            // In a cookie container, unlike a header, the app's own responses can renew or clear the cookie. The sign-in
-            // cookie holds the whole ticket unsplit, so the container must accept any size.
-            var cookies = new CookieContainer { MaxCookieSize = int.MaxValue };
-            if (signedIn?.Cookie is not null)
-            {
-                cookies.Add(address, signedIn.Cookie);
-            }
-
+            (Uri address, CookieContainer cookies) = Cookies(signedIn, options.BaseAddress ?? factory.ClientOptions.BaseAddress);
             List<DelegatingHandler> handlers = [.. options.Handlers];
             if (options.AllowAutoRedirect)
             {
@@ -221,6 +206,61 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
             return client;
         }
+    }
+
+    /// <summary>
+    /// Signs the user in through the app's own authentication, as <c>CreateClientAsync(user)</c> does, and returns the
+    /// bearer token or cookie, for a client the fixture doesn't build, such as a WebSocket or a browser. Those need a real
+    /// socket: <see cref="ServerKind.Kestrel"/> and <see cref="BaseAddress"/>.
+    /// </summary>
+    /// <param name="scheme">The scheme to sign in through, instead of <see cref="TestUsers.Scheme"/>.</param>
+    public async Task<SignedInUser> SignInAsync(TestUser user, string? scheme = null)
+    {
+        HostFactory factory = await FactoryAsync();
+        ThrowIfABackgroundServiceCrashed();
+        return await _builder.Users.SignInAsync(user, factory.Services, scheme);
+    }
+
+    /// <summary>
+    /// A handler that reaches the app signed in as the user, or anonymously when no user is given, for a client that takes
+    /// a handler, such as SignalR's <c>HttpMessageHandlerFactory</c>. Like a client's, it keeps the cookies the app sets.
+    /// </summary>
+    /// <param name="scheme">The scheme to sign in through, instead of <see cref="TestUsers.Scheme"/>.</param>
+    public async Task<HttpMessageHandler> CreateHandlerAsync(TestUser? user = null, string? scheme = null)
+    {
+        HostFactory factory = await FactoryAsync();
+        ThrowIfABackgroundServiceCrashed();
+        SignedInUser? signedIn = user is null ? null : await _builder.Users.SignInAsync(user, factory.Services, scheme);
+        (Uri address, CookieContainer cookies) = Cookies(signedIn, factory.ClientOptions.BaseAddress);
+
+        // The cookie container below is the only cookie store, over Kestrel as on TestServer.
+        HttpMessageHandler server = _builder.Server == ServerKind.Kestrel
+            ? new SocketsHttpHandler { UseCookies = false }
+            : factory.Server.CreateHandler();
+        bool asHttps = _builder.Server == ServerKind.TestServer && address.Scheme == Uri.UriSchemeHttps;
+        return new SignedInHandler(signedIn?.BearerToken, asHttps)
+        {
+            InnerHandler = new CookieContainerHandler(cookies) { InnerHandler = server }
+        };
+    }
+
+    // TestServer accepts any scheme, so a cookie user's requests go as HTTPS, where a renewed Secure cookie keeps being
+    // sent. In a cookie container, unlike a header, the app's own responses can renew or clear the cookie. The sign-in
+    // cookie holds the whole ticket unsplit, so the container must accept any size.
+    private (Uri Address, CookieContainer Cookies) Cookies(SignedInUser? signedIn, Uri address)
+    {
+        if (signedIn?.Cookie is not null && _builder.Server == ServerKind.TestServer)
+        {
+            address = new UriBuilder(address) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
+        }
+
+        var cookies = new CookieContainer { MaxCookieSize = int.MaxValue };
+        if (signedIn?.Cookie is not null)
+        {
+            cookies.Add(address, signedIn.Cookie);
+        }
+
+        return (address, cookies);
     }
 
     /// <summary>A scope for resolving scoped services, building the host without blocking a thread. Dispose it with await using.</summary>
@@ -412,6 +452,24 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     private sealed class HostFactory(Action<IWebHostBuilder> configure) : WebApplicationFactory<TProgram>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder) => configure(builder);
+    }
+
+    private sealed class SignedInHandler(string? bearerToken, bool asHttps) : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (bearerToken is not null)
+            {
+                request.Headers.Authorization ??= new AuthenticationHeaderValue("Bearer", bearerToken);
+            }
+
+            if (asHttps && request.RequestUri is { IsAbsoluteUri: true } uri && uri.Scheme != Uri.UriSchemeHttps)
+            {
+                request.RequestUri = new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
+            }
+
+            return base.SendAsync(request, cancellationToken);
+        }
     }
 
     private sealed class OverrideHost(TestHostBuilder builder, string? skipReason) : TestHost<TProgram>(builder, skipReason)

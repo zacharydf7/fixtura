@@ -23,6 +23,32 @@ or the cookie handler. Name the scheme with `host.Users.Scheme = "Bearer"` when 
 forwards to others, the app has several bearer schemes, or its endpoints name their scheme in
 `[Authorize(AuthenticationSchemes = ...)]`. A client can name its own with `TestClientOptions.Scheme`.
 
+## Other clients
+
+SignalR connections, WebSockets and browsers aren't built with `CreateClientAsync`, but can still sign in as a test
+user:
+
+- `CreateHandlerAsync(user)` returns a handler that reaches the app signed in as the user and keeps the cookies the app
+  sets, for a client that takes a handler. On the test server, give it to SignalR with the long-polling transport:
+
+  ```csharp
+  HttpMessageHandler handler = await api.CreateHandlerAsync(TestUser.Named("ann"));
+  HubConnection hub = new HubConnectionBuilder()
+      .WithUrl("http://localhost/hubs/orders", options =>
+      {
+          options.HttpMessageHandlerFactory = _ => handler;
+          options.Transports = HttpTransportType.LongPolling;
+      })
+      .Build();
+  ```
+
+- `SignInAsync(user)` returns a `SignedInUser` with the `BearerToken` or the `Cookie`, whichever `host.Users.SignIn`
+  picks. Send the token from SignalR's `AccessTokenProvider` or a WebSocket request's `Authorization` header, or add
+  the cookie to a browser, setting its domain to the app's.
+
+A WebSocket or a browser needs a real socket: set `host.Server = ServerKind.Kestrel` and connect to `api.BaseAddress`.
+The in-memory test server only answers clients built on its handler.
+
 ## Apps with a user store
 
 Apps that check each request against their user store, as ASP.NET Identity's security-stamp check does, need the user

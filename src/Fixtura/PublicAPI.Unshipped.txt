@@ -1,5 +1,8 @@
 #nullable enable
 Fixtura.HttpFake.WaitForRequestAsync(System.Func<Fixtura.FakeHttpRequest!, bool>? match = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<Fixtura.FakeHttpRequest!>!
+Fixtura.SignedInUser
+Fixtura.SignedInUser.BearerToken.get -> string?
+Fixtura.SignedInUser.Cookie.get -> System.Net.Cookie?
 Fixtura.TestClientOptions
 Fixtura.TestClientOptions.AllowAutoRedirect.get -> bool
 Fixtura.TestClientOptions.AllowAutoRedirect.init -> void
@@ -12,12 +15,14 @@ Fixtura.TestClientOptions.Scheme.init -> void
 Fixtura.TestClientOptions.TestClientOptions() -> void
 Fixtura.TestHost<TProgram>.Clock.get -> Microsoft.Extensions.Time.Testing.FakeTimeProvider!
 Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
+Fixtura.TestHost<TProgram>.CreateHandlerAsync(Fixtura.TestUser? user = null, string? scheme = null) -> System.Threading.Tasks.Task<System.Net.Http.HttpMessageHandler!>!
 Fixtura.TestHost<TProgram>.CreateScopeAsync() -> System.Threading.Tasks.Task<Microsoft.Extensions.DependencyInjection.AsyncServiceScope>!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Action<System.IServiceProvider!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.HttpFake(string! clientName) -> Fixtura.HttpFake!
 Fixtura.TestHost<TProgram>.HttpFake<TClient>() -> Fixtura.HttpFake!
 Fixtura.TestHost<TProgram>.Resource<TResource>() -> TResource
+Fixtura.TestHost<TProgram>.SignInAsync(Fixtura.TestUser! user, string? scheme = null) -> System.Threading.Tasks.Task<Fixtura.SignedInUser!>!
 Fixtura.TestHost<TProgram>.StartHostedServiceAsync<THostedService>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<THostedService!>!
 Fixtura.TestHostBuilder.Environment.get -> string?
 Fixtura.TestHostBuilder.Environment.set -> void

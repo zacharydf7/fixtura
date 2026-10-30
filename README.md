@@ -221,7 +221,9 @@ HttpClient noRedirects = await api.CreateClientAsync(null, new TestClientOptions
 ```
 
 `TestClientOptions` also sets a client's `BaseAddress`, its own `DelegatingHandler`s and the `Scheme` its user signs in
-through.
+through. For clients the fixture doesn't build, `api.CreateHandlerAsync(user)` returns a signed-in handler, such as for
+SignalR's `HttpMessageHandlerFactory`, and `api.SignInAsync(user)` returns the user's `BearerToken` or `Cookie`, such as
+for a WebSocket or a browser, which connect to `api.BaseAddress` on `ServerKind.Kestrel`.
 
 The user signs in through the app's own authentication handler, so its token or cookie events and account checks still
 run, through the app's default authenticate scheme unless `host.Users.Scheme` names another, as an app whose default
