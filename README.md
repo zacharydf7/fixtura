@@ -107,9 +107,11 @@ host.Services
 
 - One call works for every registration shape: `AddDbContext`, `AddDbContextPool`, `AddDbContextFactory` and
   `AddPooledDbContextFactory`. Only the options configuration is replaced, so the app's lifetimes and pooling stay.
-- `AppDbOptions.Drop` (the default) configures the context from scratch. `AppDbOptions.Keep` still runs the app's own
-  configuration, such as interceptors, and replaces only the database provider. If the app's configuration throws, for
-  example on a missing connection string, supply the value with `host.Settings`.
+- `AppDbOptions.Drop` (the default) configures the context from scratch, provider options included: an app whose
+  migrations live in another assembly needs `MigrationsAssembly` in the lambda. `AppDbOptions.Keep` still runs the app's
+  own configuration, such as interceptors, and replaces only the database provider; on the app's own provider, the app's
+  migrations assembly and history table, command timeout and retries fill whatever the lambda leaves unset. If the
+  app's configuration throws, for example on a missing connection string, supply the value with `host.Settings`.
 - `ReplaceDbContexts(assembly, ...)` reaches every registered context whose type is declared in that assembly, including
   ones a library keeps internal.
 - A swap throws when the context's options are registered by hand rather than through EF's `Add...` methods, because it

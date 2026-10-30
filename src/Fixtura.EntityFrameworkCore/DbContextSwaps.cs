@@ -87,18 +87,45 @@ public static class DbContextSwaps
 
         services.ConfigureDbContext<TContext>((provider, builder) =>
         {
-            if (appOptions == AppDbOptions.Keep)
-            {
-                CopyAppOptions<TContext>(originals, provider, builder);
-            }
-
+            IDbContextOptionsExtension? appProvider = appOptions == AppDbOptions.Keep
+                ? CopyAppOptions<TContext>(originals, provider, builder)
+                : null;
             configure(builder);
+
+            if (appProvider is RelationalOptionsExtension app
+                && builder.Options.Extensions.SingleOrDefault(extension => extension.Info.IsDatabaseProvider)
+                    is RelationalOptionsExtension replacement
+                && app.GetType() == replacement.GetType())
+            {
+                var infrastructure = (IDbContextOptionsBuilderInfrastructure)builder;
+                infrastructure.AddOrUpdateExtension(WithAppSettings(replacement, app));
+            }
         });
     }
 
-    // Runs the app's own configuration on a scratch builder and copies everything except the database provider.
-    private static void CopyAppOptions<TContext>(List<ServiceDescriptor> originals, IServiceProvider provider,
-        DbContextOptionsBuilder target) where TContext : DbContext
+    // The app's migrations, command timeout and retries, where the replacement left them unset. Nothing else crosses over:
+    // the rest of a provider's options, such as its connection, data source or engine, belongs to the test's database.
+    private static RelationalOptionsExtension WithAppSettings(RelationalOptionsExtension test,
+        RelationalOptionsExtension app)
+    {
+        if (test.MigrationsAssembly is null && test.MigrationsAssemblyObject is null)
+        {
+            test = app.MigrationsAssemblyObject is null
+                ? test.WithMigrationsAssembly(app.MigrationsAssembly)
+                : test.WithMigrationsAssembly(app.MigrationsAssemblyObject);
+        }
+
+        return test
+            .WithMigrationsHistoryTableName(test.MigrationsHistoryTableName ?? app.MigrationsHistoryTableName)
+            .WithMigrationsHistoryTableSchema(test.MigrationsHistoryTableSchema ?? app.MigrationsHistoryTableSchema)
+            .WithCommandTimeout(test.CommandTimeout ?? app.CommandTimeout)
+            .WithExecutionStrategyFactory(test.ExecutionStrategyFactory ?? app.ExecutionStrategyFactory);
+    }
+
+    // Runs the app's own configuration on a scratch builder and copies everything except the database provider, which it
+    // returns.
+    private static IDbContextOptionsExtension? CopyAppOptions<TContext>(List<ServiceDescriptor> originals,
+        IServiceProvider provider, DbContextOptionsBuilder target) where TContext : DbContext
     {
         // Starts from what EF has built so far, so its own settings such as the application service provider survive.
         var scratch = new DbContextOptionsBuilder<TContext>((DbContextOptions<TContext>)target.Options);
@@ -126,5 +153,7 @@ public static class DbContextSwaps
                 ((IDbContextOptionsBuilderInfrastructure)target).AddOrUpdateExtension(extension);
             }
         }
+
+        return scratch.Options.Extensions.SingleOrDefault(extension => extension.Info.IsDatabaseProvider);
     }
 }

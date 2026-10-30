@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -59,6 +60,67 @@ public class DbContextSwapsTests
         db.Items.Add(new ShopItem());
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Assert.Equal(0, interceptor.Saves);
+    }
+
+    [Theory]
+    [MemberData(nameof(Shapes))]
+    public async Task ReplaceDbContext_ShouldKeepTheAppsProviderOptions_WhenKeptAppOptionsUseTheSameProvider(Shape shape)
+    {
+        var services = new ServiceCollection();
+        Register(services, shape, (_, db) =>
+            db.UseSqlServer("Server=app", sql =>
+                sql.MigrationsAssembly("Shop.Migrations").CommandTimeout(99).EnableRetryOnFailure()));
+
+        services.ReplaceDbContext<ShopContext>(db => db.UseSqlServer("Server=test"), AppDbOptions.Keep);
+
+        await using ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        var sql = RelationalOptionsExtension.Extract(Resolve(provider, shape).GetService<IDbContextOptions>());
+        Assert.Equal(("Shop.Migrations", 99, "Server=test"),
+            (sql.MigrationsAssembly, sql.CommandTimeout, sql.ConnectionString));
+        Assert.NotNull(sql.ExecutionStrategyFactory);
+    }
+
+    [Fact]
+    public async Task ReplaceDbContext_ShouldUseTheReplacementsProviderOptions_WhenItSetsThemToo()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<ShopContext>(db => db.UseSqlServer("Server=app", sql => sql.CommandTimeout(99)));
+
+        services.ReplaceDbContext<ShopContext>(db => db.UseSqlServer("Server=test", sql => sql.CommandTimeout(5)),
+            AppDbOptions.Keep);
+
+        await using ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        var sql = RelationalOptionsExtension.Extract(Resolve(provider, Shape.Plain).GetService<IDbContextOptions>());
+        Assert.Equal(5, sql.CommandTimeout);
+    }
+
+    [Fact]
+    public async Task ReplaceDbContext_ShouldUseTheReplacementsConnection_WhenGivenAConnectionObject()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<ShopContext>(db => db.UseSqlServer("Server=app", sql => sql.CommandTimeout(99)));
+        await using var connection = new SqlConnection("Server=test");
+
+        services.ReplaceDbContext<ShopContext>(db => db.UseSqlServer(connection), AppDbOptions.Keep);
+
+        await using ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        var sql = RelationalOptionsExtension.Extract(Resolve(provider, Shape.Plain).GetService<IDbContextOptions>());
+        Assert.Same(connection, sql.Connection);
+        Assert.Equal((null, 99), (sql.ConnectionString, sql.CommandTimeout));
+    }
+
+    [Fact]
+    public async Task ReplaceDbContext_ShouldNotKeepTheAppsConnection_WhenTheAppGivesAConnectionObject()
+    {
+        var services = new ServiceCollection();
+        await using var connection = new SqlConnection("Server=app");
+        services.AddDbContext<ShopContext>(db => db.UseSqlServer(connection));
+
+        services.ReplaceDbContext<ShopContext>(db => db.UseSqlServer("Server=test"), AppDbOptions.Keep);
+
+        await using ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        var sql = RelationalOptionsExtension.Extract(Resolve(provider, Shape.Plain).GetService<IDbContextOptions>());
+        Assert.Equal((null, "Server=test"), (sql.Connection, sql.ConnectionString));
     }
 
     [Fact]

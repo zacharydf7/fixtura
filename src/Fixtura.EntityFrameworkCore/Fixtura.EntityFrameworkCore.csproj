@@ -11,6 +11,7 @@
   <!-- The oldest version the package needs, so it never forces a consumer's own references to move. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
