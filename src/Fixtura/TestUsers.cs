@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -18,6 +19,9 @@ public sealed class TestUsers
 {
     private readonly SemaphoreSlim _seeding;
     private readonly SeederAdditions _additions;
+    // The claim the cookie handler reads a session store's key from.
+    private const string SessionIdClaim = "Microsoft.AspNetCore.Authentication.Cookies-SessionId";
+
     private readonly RsaSecurityKey _authorityKey = new(RSA.Create(2048));
     private Type? _seeder;
 
@@ -59,7 +63,7 @@ public sealed class TestUsers
         IReadOnlyList<Claim>? seeded = _seeder is null ? null : await SeedAsync(user, services);
         return SignIn == UserSignIn.AppJwtBearer
             ? new SignedInUser(CreateToken(services, scheme, user, seeded), null)
-            : new SignedInUser(null, CreateCookie(services, scheme, user, seeded));
+            : new SignedInUser(null, await CreateCookieAsync(services, scheme, user, seeded));
     }
 
     private async Task<string> ResolveSchemeAsync(IServiceProvider services)
@@ -148,7 +152,8 @@ public sealed class TestUsers
         _ => SecurityAlgorithms.RsaSha256
     };
 
-    private static Cookie CreateCookie(IServiceProvider services, string scheme, TestUser user, IReadOnlyList<Claim>? seeded)
+    private static async Task<Cookie> CreateCookieAsync(IServiceProvider services, string scheme, TestUser user,
+        IReadOnlyList<Claim>? seeded)
     {
         CookieAuthenticationOptions options =
             services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(scheme);
@@ -161,6 +166,20 @@ public sealed class TestUsers
             ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
         };
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, scheme);
+
+        // With a session store, the ticket stays in the store and the cookie carries only its session id, as the app's own
+        // sign-in does.
+        if (options.SessionStore is { } store)
+        {
+            // The handler always passes the request, and a store may resolve its services from it.
+            await using AsyncServiceScope scope = services.CreateAsyncScope();
+            var request = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+            string issuer = options.ClaimsIssuer ?? scheme;
+            string sessionId = await store.StoreAsync(ticket, request, CancellationToken.None);
+            var session = new Claim(SessionIdClaim, sessionId, ClaimValueTypes.String, issuer);
+            ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([session], issuer)), scheme);
+        }
+
         string protectedTicket = options.TicketDataFormat.Protect(ticket);
         return new Cookie(options.Cookie.Name!, protectedTicket, "/");
     }

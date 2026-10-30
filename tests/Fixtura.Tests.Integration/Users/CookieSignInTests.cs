@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fixtura.Tests.Integration.Users;
 
@@ -17,6 +20,65 @@ public sealed class SecureCookieFixture : TestHost<CookieApp.Program>
     {
         host.Users.SignIn = UserSignIn.AppCookie;
         host.Options<CookieAuthenticationOptions>(options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+    }
+}
+
+// The app keeps tickets in a session store, so its cookie carries only a session id.
+public sealed class SessionStoreCookieFixture : TestHost<CookieApp.Program>
+{
+    public MemoryTicketStore Sessions { get; } = new();
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Users.SignIn = UserSignIn.AppCookie;
+        host.Options<CookieAuthenticationOptions>(options => options.SessionStore = Sessions);
+    }
+}
+
+// Keeps tickets in memory, as an app's store might keep them in a distributed cache. Like a store that resolves its
+// services from the request, it only stores through the overload the cookie handler calls.
+public sealed class MemoryTicketStore : ITicketStore
+{
+    private readonly ConcurrentDictionary<string, AuthenticationTicket> _tickets = new();
+
+    public int Count => _tickets.Count;
+
+    public Task<string> StoreAsync(AuthenticationTicket ticket) =>
+        throw new NotSupportedException("The cookie handler stores tickets with the request.");
+
+    public Task<string> StoreAsync(AuthenticationTicket ticket, HttpContext httpContext, CancellationToken cancellationToken)
+    {
+        httpContext.RequestServices.GetRequiredService<IAuthenticationSchemeProvider>();
+        string key = Guid.NewGuid().ToString("N");
+        _tickets[key] = ticket;
+        return Task.FromResult(key);
+    }
+
+    public Task RenewAsync(string key, AuthenticationTicket ticket)
+    {
+        _tickets[key] = ticket;
+        return Task.CompletedTask;
+    }
+
+    public Task<AuthenticationTicket?> RetrieveAsync(string key) => Task.FromResult(_tickets.GetValueOrDefault(key));
+
+    public Task RemoveAsync(string key)
+    {
+        _tickets.TryRemove(key, out _);
+        return Task.CompletedTask;
+    }
+}
+
+public class SessionStoreCookieSignInTests(SessionStoreCookieFixture api) : IClassFixture<SessionStoreCookieFixture>
+{
+    [Fact]
+    public async Task CreateClientAsync_ShouldSignIn_WhenTheAppKeepsTicketsInASessionStore()
+    {
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("ann").WithRoles("Auditor"));
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal(("ann", 1), (me!.Name, api.Sessions.Count));
     }
 }
 

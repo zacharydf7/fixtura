@@ -11,7 +11,7 @@ still run. Choose how with `host.Users.SignIn`:
 | `UserSignIn` | How |
 | --- | --- |
 | `AppJwtBearer` (default) | A bearer token signed with the app's own `JwtBearerOptions` key, issuer and audience, with the algorithm its key type needs (HMAC, RSA or ECDsa). Apps that trust an `Authority`, or pin only public keys, trust a test signing key as well, so no metadata request leaves the process. |
-| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. Clients talk to the test server over HTTPS, so a Secure cookie keeps working after the app renews it. |
+| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. With a cookie `SessionStore`, the ticket goes into the app's store and the cookie carries its session id. The app's security-stamp check runs on the first request, and its sign-out works. Clients talk to the test server over HTTPS, so a Secure cookie keeps working after the app renews it. |
 
 Claim types come from the app's own options, so the principal reads the same whether or not the app maps inbound
 claims.
