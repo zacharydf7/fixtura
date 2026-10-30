@@ -18,6 +18,8 @@ The SQL Server resource empties every table in the fixture's databases and resta
 - Tables empty in foreign-key order. Tables that reference each other in a loop pause those keys while they empty, and
   the keys are checked again afterward.
 - System-versioned tables lose their history too.
+- The app's delete triggers don't run, so an audit trigger doesn't refill a table and a soft-delete trigger doesn't keep
+  rows. Triggers the app disabled stay disabled.
 - EF Core's migrations history keeps its rows, and so do the tables in `SqlServerOptions.KeepOnReset`, written as
   `"Table"` or `"schema.Table"`. List reference data the app inserts there.
 - The schema stays, so the app doesn't migrate again.

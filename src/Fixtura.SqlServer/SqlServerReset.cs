@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 
 namespace Fixtura;
@@ -18,27 +19,29 @@ internal static class SqlServerReset
         LEFT JOIN sys.schemas hs ON hs.schema_id = h.schema_id
         WHERE t.is_ms_shipped = 0 AND t.temporal_type <> 1;
         SELECT fk.name, fk.parent_object_id, fk.referenced_object_id, fk.is_disabled FROM sys.foreign_keys fk;
+        SELECT tr.parent_id, tr.name FROM sys.triggers tr WHERE tr.parent_class = 1 AND tr.is_disabled = 0;
         """;
 
     public static async Task ResetAsync(string connectionString, IReadOnlyList<string> keep)
     {
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
-        (List<Table> tables, List<ForeignKey> foreignKeys) = await ReadSchemaAsync(connection);
+        (List<Table> tables, List<ForeignKey> foreignKeys, List<Trigger> triggers) = await ReadSchemaAsync(connection);
         List<Table> cleared = tables.Where(table => !IsKept(table, keep)).ToList();
         if (cleared.Count == 0)
         {
             return;
         }
 
-        await using var command = new SqlCommand(BuildScript(cleared, foreignKeys), connection);
+        await using var command = new SqlCommand(BuildScript(cleared, foreignKeys, triggers), connection);
         await command.ExecuteNonQueryAsync();
     }
 
-    private static async Task<(List<Table>, List<ForeignKey>)> ReadSchemaAsync(SqlConnection connection)
+    private static async Task<(List<Table>, List<ForeignKey>, List<Trigger>)> ReadSchemaAsync(SqlConnection connection)
     {
         var tables = new List<Table>();
         var foreignKeys = new List<ForeignKey>();
+        var triggers = new List<Trigger>();
         await using var command = new SqlCommand(ListTables, connection);
         await using SqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -55,7 +58,13 @@ internal static class SqlServerReset
             foreignKeys.Add(new ForeignKey(reader.GetString(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3)));
         }
 
-        return (tables, foreignKeys);
+        await reader.NextResultAsync();
+        while (await reader.ReadAsync())
+        {
+            triggers.Add(new Trigger(reader.GetInt32(0), reader.GetString(1)));
+        }
+
+        return (tables, foreignKeys, triggers);
     }
 
     // EF Core's migrations history always stays, or the app would try to migrate an existing schema again.
@@ -64,7 +73,7 @@ internal static class SqlServerReset
         || keep.Any(name => name.Equals(table.Name, StringComparison.OrdinalIgnoreCase)
             || name.Equals($"{table.Schema}.{table.Name}", StringComparison.OrdinalIgnoreCase));
 
-    private static string BuildScript(List<Table> cleared, List<ForeignKey> foreignKeys)
+    private static string BuildScript(List<Table> cleared, List<ForeignKey> foreignKeys, List<Trigger> triggers)
     {
         (List<Table> ordered, List<Table> cyclic) = DeleteOrder(cleared, foreignKeys);
 
@@ -79,19 +88,28 @@ internal static class SqlServerReset
         // versioning pauses while both empty.
         List<Table> versioned = cleared.Where(table => table.History is not null).ToList();
 
+        // The app's delete triggers would refill audit tables or keep soft-deleted rows, so the enabled ones pause too.
+        List<Trigger> quiet = triggers.Where(trigger => byId.ContainsKey(trigger.Table)).ToList();
+        string TriggerOnTable(Trigger trigger) =>
+            $"{Quote(byId[trigger.Table].Schema)}.{Quote(trigger.Name)} ON {byId[trigger.Table].QuotedName}";
+
         var script = new List<string> { "SET XACT_ABORT ON;", "BEGIN TRANSACTION;" };
         script.AddRange(versioned.Select(table => $"ALTER TABLE {table.QuotedName} SET (SYSTEM_VERSIONING = OFF);"));
         script.AddRange(paused.Select(key => $"ALTER TABLE {byId[key.Child].QuotedName} NOCHECK CONSTRAINT {Quote(key.Name)};"));
+        script.AddRange(quiet.Select(trigger => $"DISABLE TRIGGER {TriggerOnTable(trigger)};"));
         script.AddRange(ordered.Concat(cyclic).Select(table => $"DELETE FROM {table.QuotedName};"));
         // EXEC compiles the delete once versioning is off; compiled with the batch, it would still see a history table.
         script.AddRange(versioned.Select(table => $"EXEC (N'DELETE FROM {table.History!.Replace("'", "''")}');"));
+        script.AddRange(quiet.Select(trigger => $"ENABLE TRIGGER {TriggerOnTable(trigger)};"));
         script.AddRange(paused.Select(key =>
             $"ALTER TABLE {byId[key.Child].QuotedName} WITH CHECK CHECK CONSTRAINT {Quote(key.Name)};"));
         script.AddRange(versioned.Select(table => $"ALTER TABLE {table.QuotedName} SET (SYSTEM_VERSIONING = ON ({table.VersioningOptions}));"));
 
-        // Reseeding to one step before the seed makes the next row get the seed, as in a new table.
+        // Reseeding to one step before the seed makes the next row get the seed, as in a new table. The number is
+        // written invariantly: some cultures write a minus sign T-SQL doesn't accept.
         script.AddRange(cleared.Where(table => table.IdentityUsed).Select(table =>
-            $"DBCC CHECKIDENT ('{table.QuotedName.Replace("'", "''")}', RESEED, {table.Seed - table.Increment}) WITH NO_INFOMSGS;"));
+            string.Create(CultureInfo.InvariantCulture, $"DBCC CHECKIDENT ('{table.QuotedName.Replace("'", "''")}', "
+                + $"RESEED, {checked(table.Seed!.Value - table.Increment!.Value)}) WITH NO_INFOMSGS;")));
         script.Add("COMMIT;");
         return string.Join(Environment.NewLine, script);
     }
@@ -134,4 +152,6 @@ internal static class SqlServerReset
     }
 
     private sealed record ForeignKey(string Name, int Child, int Parent, bool IsDisabled);
+
+    private sealed record Trigger(int Table, string Name);
 }
