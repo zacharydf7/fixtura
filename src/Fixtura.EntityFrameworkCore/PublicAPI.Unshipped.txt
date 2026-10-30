@@ -1,0 +1,9 @@
+#nullable enable
+Fixtura.AppDbOptions
+Fixtura.AppDbOptions.Drop = 0 -> Fixtura.AppDbOptions
+Fixtura.AppDbOptions.Keep = 1 -> Fixtura.AppDbOptions
+Fixtura.DbContextSwaps
+static Fixtura.DbContextSwaps.ReplaceDbContext<TContext>(this Fixtura.TestServices! services, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure, Fixtura.AppDbOptions appOptions = Fixtura.AppDbOptions.Drop) -> Fixtura.TestServices!
+static Fixtura.DbContextSwaps.ReplaceDbContext<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure, Fixtura.AppDbOptions appOptions = Fixtura.AppDbOptions.Drop) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Fixtura.DbContextSwaps.ReplaceDbContexts(this Fixtura.TestServices! services, System.Reflection.Assembly! assembly, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure, Fixtura.AppDbOptions appOptions = Fixtura.AppDbOptions.Drop) -> Fixtura.TestServices!
+static Fixtura.DbContextSwaps.ReplaceDbContexts(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Reflection.Assembly! assembly, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure, Fixtura.AppDbOptions appOptions = Fixtura.AppDbOptions.Drop) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

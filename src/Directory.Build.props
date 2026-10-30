@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Every public API change must be listed in PublicAPI.Unshipped.txt, so it shows up as a plain diff in review. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Each swap exists on both IServiceCollection and TestServices, which the optional-parameter overload rules flag. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+  </PropertyGroup>
+</Project>
