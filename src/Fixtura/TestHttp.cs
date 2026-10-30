@@ -10,6 +10,9 @@ namespace Fixtura;
 /// </summary>
 public sealed class TestHttp
 {
+    // Matched by name, so Fixtura needn't reference the resilience package the app uses.
+    private const string ResilienceHandlerTypeName = "Microsoft.Extensions.Http.Resilience.ResilienceHandler";
+
     private readonly Dictionary<string, HttpFake> _fakes = [];
     private readonly HashSet<string> _inherited = [];
     private readonly List<Type> _typedClients = [];
@@ -23,6 +26,11 @@ public sealed class TestHttp
     /// fake under the wrong name fails instead of letting the request reach the network.
     /// </summary>
     public UnfakedHttpClients Unfaked { get; set; } = UnfakedHttpClients.Block;
+
+    /// <summary>
+    /// What happens to the app's resilience handlers on faked clients; <see cref="FakedClientResilience.Keep"/> unless set.
+    /// </summary>
+    public FakedClientResilience Resilience { get; set; } = FakedClientResilience.Keep;
 
     /// <summary>
     /// The fake for the named client, as registered with <c>AddHttpClient(name)</c>. Asking twice returns the same fake; in
@@ -78,7 +86,7 @@ public sealed class TestHttp
     // Shares the fakes, which a test reads through the fixture, until the override fakes a client again.
     internal TestHttp Copy()
     {
-        var copy = new TestHttp { Unfaked = Unfaked };
+        var copy = new TestHttp { Unfaked = Unfaked, Resilience = Resilience };
         foreach (KeyValuePair<string, HttpFake> fake in _fakes)
         {
             copy._fakes[fake.Key] = fake.Value;
@@ -136,6 +144,16 @@ public sealed class TestHttp
         if (_fakes.TryGetValue(name, out HttpFake? fake))
         {
             builder.PrimaryHandler = new FakeHandler(fake.SendAsync);
+            if (Resilience == FakedClientResilience.Remove)
+            {
+                for (int i = builder.AdditionalHandlers.Count - 1; i >= 0; i--)
+                {
+                    if (builder.AdditionalHandlers[i].GetType().FullName == ResilienceHandlerTypeName)
+                    {
+                        builder.AdditionalHandlers.RemoveAt(i);
+                    }
+                }
+            }
         }
         else if (Unfaked == UnfakedHttpClients.Block)
         {

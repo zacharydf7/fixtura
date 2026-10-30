@@ -271,6 +271,8 @@ Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
 - `Fake(name)` fakes a named client and `Fake<TClient>()` a typed one; a typed client the app doesn't register throws
   `NothingMatchedException`. A typed client registered under a name of its own needs `Fake(name)`. Only the primary
   handler is replaced, so the app's own handlers, such as retries and auth headers, still run.
+  `host.Http.Resilience = FakedClientResilience.Remove` takes resilience handlers, such as
+  `AddStandardResilienceHandler`'s retries, off faked clients, so a fake's 503 reaches the app at once.
 - `Respond(method, path, status, json)` answers one route, and `Respond(status, json)` or `Respond(request => ...)`
   answers everything else. The latest matching response wins. A request nothing answers throws, naming the request.
 - `Requests` lists what the app sent: method, URI, headers and body, with `Json<T>()` to read the body.

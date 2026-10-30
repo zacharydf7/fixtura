@@ -1,4 +1,7 @@
 #nullable enable
+Fixtura.FakedClientResilience
+Fixtura.FakedClientResilience.Keep = 0 -> Fixtura.FakedClientResilience
+Fixtura.FakedClientResilience.Remove = 1 -> Fixtura.FakedClientResilience
 Fixtura.HttpFake.WaitForRequestAsync(System.Func<Fixtura.FakeHttpRequest!, bool>? match = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<Fixtura.FakeHttpRequest!>!
 Fixtura.SignedInUser
 Fixtura.SignedInUser.BearerToken.get -> string?
@@ -33,6 +36,8 @@ Fixtura.TestHostBuilder.Settings(System.Func<object!>! settings) -> Fixtura.Test
 Fixtura.TestHostBuilder.Use(Fixtura.ITestHostFeature! feature) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.UseFakeClock(System.DateTimeOffset? start = null) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
+Fixtura.TestHttp.Resilience.get -> Fixtura.FakedClientResilience
+Fixtura.TestHttp.Resilience.set -> void
 Fixtura.TestServices.DeferHostedService<THostedService>() -> Fixtura.TestServices!
 Fixtura.TestUsers.Scheme.get -> string?
 Fixtura.TestUsers.Scheme.set -> void

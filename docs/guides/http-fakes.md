@@ -45,6 +45,15 @@ Register a Refit client with `AddRefitClient<TApi>(httpClientName: "name")` and 
 the name from the error.
 `host.Http.Unfaked = UnfakedHttpClients.Allow` lets unfaked clients reach the network, as in production.
 
+## Retries and circuit breakers
+
+The app's resilience handlers, such as those `AddStandardResilienceHandler` or `AddResilienceHandler` add, still run on
+a faked client, so a test can check how the app retries. Against a fake that answers with an error, though, each
+request then waits through the retries and reaches the fake several times, and a circuit breaker's state carries from
+one test to the next. `host.Http.Resilience = FakedClientResilience.Remove` takes those handlers off faked clients, so
+each request reaches the fake once. Clients without a fake keep theirs, and so do handlers from the older
+Microsoft.Extensions.Http.Polly package.
+
 ## Resets and overrides
 
 - `ResetDataAsync` clears the recorded requests and brings back the responses set in `Configure`, undoing any a test
