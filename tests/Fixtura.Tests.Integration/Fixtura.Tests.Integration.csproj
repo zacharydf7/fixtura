@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.2" />
     <Using Include="Xunit" />
   </ItemGroup>
@@ -19,6 +20,8 @@
     <ProjectReference Include="..\..\src\Fixtura\Fixtura.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.EntityFrameworkCore\Fixtura.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.SqlServer\Fixtura.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\Fixtura.PostgreSql\Fixtura.PostgreSql.csproj" />
+    <ProjectReference Include="..\..\src\Fixtura.PostgreSql.Testcontainers\Fixtura.PostgreSql.Testcontainers.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.Sqlite\Fixtura.Sqlite.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.SqlServer.Testcontainers\Fixtura.SqlServer.Testcontainers.csproj" />
     <ProjectReference Include="..\SampleApps\SampleApp\SampleApp.csproj" />

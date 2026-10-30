@@ -1,0 +1,23 @@
+#nullable enable
+Fixtura.PostgreSqlOptions
+Fixtura.PostgreSqlOptions.KeepOnReset.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Fixtura.PostgreSqlOptions.KeepOnReset.init -> void
+Fixtura.PostgreSqlOptions.PostgreSqlOptions() -> void
+Fixtura.PostgreSqlOptions.ReadyTimeout.get -> System.TimeSpan
+Fixtura.PostgreSqlOptions.ReadyTimeout.init -> void
+Fixtura.PostgreSqlOptions.RequiredWhenSet.get -> string?
+Fixtura.PostgreSqlOptions.RequiredWhenSet.init -> void
+Fixtura.PostgreSqlOptions.Source.get -> Fixtura.PostgreSqlSource!
+Fixtura.PostgreSqlOptions.Source.init -> void
+Fixtura.PostgreSqlResource
+Fixtura.PostgreSqlResource.Database(string! name) -> string!
+Fixtura.PostgreSqlResource.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Fixtura.PostgreSqlResource.PostgreSqlResource(Fixtura.PostgreSqlOptions! options) -> void
+Fixtura.PostgreSqlResource.ProvisionAsync(string! namePrefix) -> System.Threading.Tasks.Task<string?>!
+Fixtura.PostgreSqlResource.ResetAsync() -> System.Threading.Tasks.Task!
+Fixtura.PostgreSqlSource
+Fixtura.PostgreSqlTestHostExtensions
+override Fixtura.PostgreSqlSource.ToString() -> string!
+static Fixtura.PostgreSqlSource.EnvironmentVariable(string! name) -> Fixtura.PostgreSqlSource!
+static Fixtura.PostgreSqlSource.From(string! description, System.Func<System.Threading.Tasks.Task<string?>!>! resolveAsync) -> Fixtura.PostgreSqlSource!
+static Fixtura.PostgreSqlTestHostExtensions.UsePostgreSql(this Fixtura.TestHostBuilder! host, Fixtura.PostgreSqlOptions! options) -> Fixtura.PostgreSqlResource!

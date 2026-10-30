@@ -21,6 +21,19 @@ internal static class GuideSnippets
         // </fake-clock>
     }
 
+    public static void PostgreSql(TestHostBuilder host)
+    {
+        // <postgresql>
+        PostgreSqlResource sql = host.UsePostgreSql(new PostgreSqlOptions
+        {
+            Source = PostgreSqlSource.EnvironmentVariableOrContainer("FIXTURA_POSTGRES"),
+            RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED",
+            KeepOnReset = ["Books"]
+        });
+        host.Services.ReplaceDbContext<ShopDb>(db => db.UseNpgsql(sql.Database("Shop")));
+        // </postgresql>
+    }
+
     public static void Sqlite(TestHostBuilder host)
     {
         // <sqlite>

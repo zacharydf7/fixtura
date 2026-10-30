@@ -26,6 +26,8 @@
     href: sqlite.md
   - name: SQL Server
     href: sql-server.md
+  - name: PostgreSQL
+    href: postgresql.md
   - name: Resetting data
     href: resetting-data.md
 - name: Running tests

@@ -1,0 +1,8 @@
+#nullable enable
+const Fixtura.PostgreSqlContainer.DefaultImage = "postgres:17-alpine" -> string!
+Fixtura.PostgreSqlContainer
+Fixtura.PostgreSqlContainer.extension(Fixtura.PostgreSqlSource!)
+static Fixtura.PostgreSqlContainer.Container(string! image = "postgres:17-alpine") -> Fixtura.PostgreSqlSource!
+static Fixtura.PostgreSqlContainer.EnvironmentVariableOrContainer(string! name, string! image = "postgres:17-alpine") -> Fixtura.PostgreSqlSource!
+static Fixtura.PostgreSqlContainer.extension(Fixtura.PostgreSqlSource!).Container(string! image = "postgres:17-alpine") -> Fixtura.PostgreSqlSource!
+static Fixtura.PostgreSqlContainer.extension(Fixtura.PostgreSqlSource!).EnvironmentVariableOrContainer(string! name, string! image = "postgres:17-alpine") -> Fixtura.PostgreSqlSource!

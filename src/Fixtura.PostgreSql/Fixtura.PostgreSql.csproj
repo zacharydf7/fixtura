@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>PostgreSQL for Fixtura test hosts: a server from an environment variable or your own code, one prefixed database per name per fixture, emptied between tests and dropped when the fixture is done. Without a server the fixture's tests skip with the reason; with the "required" variable set, as in CI, they fail.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <!-- Not released yet, so there is no earlier version to validate against. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Npgsql version EF Core's PostgreSQL provider 10.0.0 uses, so a consumer's own references never move. -->
+    <PackageReference Include="Npgsql" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fixtura.Tests.Integration" />
+  </ItemGroup>
+
+</Project>

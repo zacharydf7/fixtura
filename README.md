@@ -23,10 +23,12 @@ dotnet add package Fixtura.EntityFrameworkCore
 dotnet add package Fixtura.Sqlite
 dotnet add package Fixtura.SqlServer
 dotnet add package Fixtura.SqlServer.Testcontainers
+dotnet add package Fixtura.PostgreSql
+dotnet add package Fixtura.PostgreSql.Testcontainers
 ```
 
 `Fixtura` is the core. Add the others when the app uses EF Core, when tests need a relational database without a
-server, when they need a real SQL Server, and when that server should run in Docker.
+server, when they need a real SQL Server or PostgreSQL, and when that server should run in Docker.
 
 ## A fixture per host shape
 
@@ -340,6 +342,26 @@ SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
 - The image is `SqlServerContainer.DefaultImage` (SQL Server 2022) unless given. Without Docker, the fixture's tests skip
   with the reason, or fail when the `RequiredWhenSet` variable is set.
 
+### PostgreSQL
+
+```csharp
+PostgreSqlResource postgres = host.UsePostgreSql(new PostgreSqlOptions
+{
+    Source = PostgreSqlSource.EnvironmentVariableOrContainer("TEST_POSTGRES"),
+    RequiredWhenSet = "TEST_POSTGRES_REQUIRED",
+    KeepOnReset = ["Countries"]
+});
+host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseNpgsql(postgres.Database("Orders")));
+```
+
+- `Fixtura.PostgreSql` works like the SQL Server resource: one prefixed database per name per fixture, dropped when the
+  fixture is done, and the fixture's tests skip without a server or fail when the `RequiredWhenSet` variable is set.
+- `PostgreSqlSource.EnvironmentVariable(name)` takes a server from the variable; `Fixtura.PostgreSql.Testcontainers` adds
+  `Container(image)` and `EnvironmentVariableOrContainer(name, image)`, one container per test run with its own password.
+- `ResetDataAsync` truncates every table except EF Core's migrations history and `KeepOnReset`, restarting identity
+  columns and the sequences only those tables' defaults draw from, without the app's delete triggers. Tables an extension owns, such as PostGIS's, stay.
+- Databases a killed test run left behind stay on the server; drop the `fixtura_*` ones by hand.
+
 ## Resetting data between tests
 
 Tests that share a fixture also share its data. Reset it before each test that needs a clean start:
@@ -358,6 +380,8 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifet
   again. System-versioned tables lose their history too, and the app's delete triggers don't run. EF Core's migrations
   history keeps its rows, whatever its table's name, and so do the tables in `SqlServerOptions.KeepOnReset`; list
   reference data the app inserts there. A name that matches no table throws.
+- The PostgreSQL resource truncates every table except EF Core's migrations history and `KeepOnReset`, and restarts
+  identity columns and the sequences only emptied tables' defaults draw from.
 - The SQLite resource empties every table in its in-memory databases, keeping the schema and EF Core's migrations
   history, without running the app's triggers.
 - `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every EF Core
