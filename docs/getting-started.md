@@ -1,9 +1,5 @@
 # Getting started
 
-> [!NOTE]
-> Fixtura is pre-release, and its packages aren't on nuget.org yet. Until they are, reference the projects in `src/`
-> from a clone of the repository.
-
 This page sets up integration tests for an existing ASP.NET Core app. The examples test Bookshop, a small minimal API
 with a catalog, orders and JWT sign-in. Its code is in
 [docs/samples/Bookshop](https://github.com/zacharydf7/fixtura/tree/main/docs/samples/Bookshop).

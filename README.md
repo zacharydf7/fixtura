@@ -14,10 +14,18 @@ by hand:
 - **HTTP fakes** for the app's outbound clients, which record what the app sent.
 - **The app's logs** in the output of the test that caused them.
 
-**Status:** pre-release. Nothing is published to nuget.org yet.
-
 **Documentation:** <https://zacharydf7.github.io/fixtura/>, with a getting-started guide, tutorials and the API
 reference. This README is the short overview.
+
+```
+dotnet add package Fixtura
+dotnet add package Fixtura.EntityFrameworkCore
+dotnet add package Fixtura.SqlServer
+dotnet add package Fixtura.SqlServer.Testcontainers
+```
+
+`Fixtura` is the core. Add the others when the app uses EF Core, when tests need a real SQL Server, and when that
+server should run in Docker.
 
 ## A fixture per host shape
 

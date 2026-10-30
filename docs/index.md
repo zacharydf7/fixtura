@@ -27,9 +27,6 @@ writes by hand:
 
 ## Install
 
-> [!NOTE]
-> Fixtura is pre-release, and these packages aren't on nuget.org yet.
-
 ```
 dotnet add package Fixtura
 dotnet add package Fixtura.EntityFrameworkCore
