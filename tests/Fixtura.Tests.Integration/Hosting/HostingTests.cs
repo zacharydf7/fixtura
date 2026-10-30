@@ -153,3 +153,18 @@ public class RequiredResourceTests
         Assert.Contains("required", error.Message);
     }
 }
+
+public class FailingShutdownTests
+{
+    [Fact]
+    public async Task DisposeAsync_ShouldStillDisposeTheResources_WhenTheAppFailsToShutDown()
+    {
+        var api = new FailingShutdownFixture();
+        await api.InitializeAsync();
+        _ = api.Services;
+
+        await Assert.ThrowsAnyAsync<Exception>(() => api.DisposeAsync().AsTask());
+
+        Assert.True(api.Resource.Disposed);
+    }
+}

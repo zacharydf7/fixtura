@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 
 namespace Fixtura;
 
@@ -35,4 +36,50 @@ public sealed record TestUser
 
     /// <summary>A copy of this user with the claim added.</summary>
     public TestUser WithClaim(string type, string value) => this with { Claims = [.. Claims, new Claim(type, value)] };
+
+    // Users built alike are equal, and print their roles and claims, as xUnit shows them in theory names.
+    public bool Equals(TestUser? other) =>
+        other is not null && Name == other.Name && Id == other.Id && Roles.SequenceEqual(other.Roles)
+        && Claims.Select(Key).SequenceEqual(other.Claims.Select(Key));
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Name);
+        hash.Add(Id);
+        foreach (string role in Roles)
+        {
+            hash.Add(role);
+        }
+
+        foreach (Claim claim in Claims)
+        {
+            hash.Add(Key(claim));
+        }
+
+        return hash.ToHashCode();
+    }
+
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append($"Name = {Name}");
+        if (Id is not null)
+        {
+            builder.Append($", Id = {Id}");
+        }
+
+        if (Roles.Count > 0)
+        {
+            builder.Append($", Roles = [{string.Join(", ", Roles)}]");
+        }
+
+        if (Claims.Count > 0)
+        {
+            builder.Append($", Claims = [{string.Join(", ", Claims.Select(claim => $"{claim.Type}: {claim.Value}"))}]");
+        }
+
+        return true;
+    }
+
+    private static (string Type, string Value) Key(Claim claim) => (claim.Type, claim.Value);
 }

@@ -120,6 +120,31 @@ public class CookieIdentityTests(CookieIdentityFixture api) : IClassFixture<Cook
         Assert.Equal("Auditor", Assert.Single(me!.Roles));
     }
 
+    [Fact]
+    public async Task CreateClientAsync_ShouldSignIn_WhenAskingForARoleTheAppGrantedInAnotherCase()
+    {
+        await api.CreateClientAsync(TestUser.Named("noor"));
+        await Identity.AddToRoleAsync<IdentityUser>(api.Services, "noor", "Auditor");
+
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("noor").WithRoles("auditor"));
+
+        HttpResponseMessage response = await client.GetAsync("/me", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // The store names the role Manager, as olga's sign-in created it, while pia asked for manager.
+    [Fact]
+    public async Task CreateClientAsync_ShouldDropARoleAddedInAnotherCase_WhenTheSameUserSignsInWithoutIt()
+    {
+        await api.CreateClientAsync(TestUser.Named("olga").WithRoles("Auditor", "Manager"));
+        await api.CreateClientAsync(TestUser.Named("pia").WithRoles("Auditor", "manager"));
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("pia").WithRoles("Auditor"));
+
+        MeResponse? me = await client.GetFromJsonAsync<MeResponse>("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Auditor", Assert.Single(me!.Roles));
+    }
+
     // The app's stamp check rebuilds the principal from the store, so this fails unless the store itself lost the role.
     [Fact]
     public async Task CreateClientAsync_ShouldDropRolesAnEarlierSignInAdded_WhenTheSameUserSignsInWithoutThem()

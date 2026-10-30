@@ -7,15 +7,16 @@ internal sealed class SeederAdditions
     private readonly Dictionary<string, HashSet<string>> _roles = [];
     private readonly Dictionary<string, HashSet<(string Type, string Value)>> _claims = [];
 
-    public HashSet<string> RolesOf(string userId) => SetFor(_roles, userId);
+    public HashSet<string> RolesOf(string userId) => SetFor(_roles, userId, StringComparer.OrdinalIgnoreCase);
 
     public HashSet<(string Type, string Value)> ClaimsOf(string userId) => SetFor(_claims, userId);
 
-    private static HashSet<T> SetFor<T>(Dictionary<string, HashSet<T>> sets, string userId)
+    private static HashSet<T> SetFor<T>(Dictionary<string, HashSet<T>> sets, string userId,
+        IEqualityComparer<T>? comparer = null)
     {
         if (!sets.TryGetValue(userId, out HashSet<T>? set))
         {
-            set = [];
+            set = new HashSet<T>(comparer);
             sets[userId] = set;
         }
 

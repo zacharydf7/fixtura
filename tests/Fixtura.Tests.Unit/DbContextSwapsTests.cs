@@ -190,6 +190,20 @@ public class DbContextSwapsTests
         Assert.Contains("can't reach this context", error.Message);
     }
 
+    // Only EF Core's own factories read the configurations a swap replaces; one the app writes keeps its database.
+    [Fact]
+    public void ReplaceDbContext_ShouldThrow_WhenTheAppRegistersItsOptionsThroughItsOwnFactory()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(_ => new DbContextOptionsBuilder<ShopContext>().UseSqlServer("Server=unused").Options);
+        services.AddScoped<ShopContext>();
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            services.ReplaceDbContext<ShopContext>(db => db.UseInMemoryDatabase("unused")));
+
+        Assert.Contains("can't reach this context", error.Message);
+    }
+
     [Fact]
     public void ReplaceDbContexts_ShouldThrow_WhenTheAssemblyHasNoContexts()
     {

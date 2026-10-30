@@ -69,7 +69,9 @@ public static class DbContextSwaps
             ?? throw new NothingMatchedException($"ReplaceDbContext<{typeof(TContext).Name}>");
 
         // Options the app registers itself never read the configurations swapped below, so the app's database would stay.
-        if (options.ImplementationFactory?.Method.DeclaringType != typeof(EntityFrameworkServiceCollectionExtensions))
+        // EF Core's own factories do, wherever in EF Core they're declared.
+        Assembly? factoryAssembly = options.ImplementationFactory?.Method.DeclaringType?.Assembly;
+        if (factoryAssembly != typeof(EntityFrameworkServiceCollectionExtensions).Assembly)
         {
             throw new InvalidOperationException(
                 $"ReplaceDbContext<{typeof(TContext).Name}> can't reach this context: its options aren't registered through "

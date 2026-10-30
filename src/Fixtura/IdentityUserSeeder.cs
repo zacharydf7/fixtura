@@ -60,8 +60,10 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
             return;
         }
 
+        // Identity matches role names whatever their case, so these comparisons do too.
         IList<string> current = await users.GetRolesAsync(identityUser);
-        List<string> stale = current.Where(role => added.Contains(role) && !roles.Contains(role)).ToList();
+        List<string> stale = current
+            .Where(role => added.Contains(role) && !roles.Contains(role, StringComparer.OrdinalIgnoreCase)).ToList();
         if (stale.Count > 0)
         {
             Check(await users.RemoveFromRolesAsync(identityUser, stale));
@@ -69,7 +71,7 @@ public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : cl
 
         added.IntersectWith(roles);
         var roleManager = services.GetRequiredService<RoleManager<TRole>>();
-        foreach (string role in roles.Except(current))
+        foreach (string role in roles.Except(current, StringComparer.OrdinalIgnoreCase))
         {
             if (!await roleManager.RoleExistsAsync(role))
             {

@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 namespace Fixtura.Tests.Integration.Hosting;
 
 public sealed class PlainFixture : TestHost<Program>
@@ -22,6 +25,25 @@ public sealed class RecordingResourceFixture : TestHost<Program>
     public RecordingResource Resource { get; } = new();
 
     protected override void Configure(TestHostBuilder host) => host.AddResource(Resource);
+}
+
+// The app fails to shut down, as a background service that throws while stopping makes it.
+public sealed class FailingShutdownFixture : TestHost<Program>
+{
+    public RecordingResource Resource { get; } = new();
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.AddResource(Resource);
+        host.Services.Configure(services => services.AddHostedService<BrokenShutdown>());
+    }
+}
+
+public sealed class BrokenShutdown : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("Shutdown failed.");
 }
 
 public sealed class UnavailableFixture : TestHost<Program>

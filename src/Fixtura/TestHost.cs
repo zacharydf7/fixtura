@@ -181,13 +181,20 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     public async ValueTask DisposeAsync()
     {
-        // The app goes first, so it has closed its connections before resources such as databases are dropped.
-        if (_build is { IsCompletedSuccessfully: true })
+        // The app goes first, so it has closed its connections before resources such as databases are dropped, and the
+        // resources go even if the app fails to shut down.
+        try
         {
-            await _build.Result.DisposeAsync();
+            if (_build is { IsCompletedSuccessfully: true })
+            {
+                await _build.Result.DisposeAsync();
+            }
+        }
+        finally
+        {
+            await _builder.DisposeResourcesAsync();
         }
 
-        await _builder.DisposeResourcesAsync();
         GC.SuppressFinalize(this);
     }
 
