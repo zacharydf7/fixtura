@@ -33,6 +33,18 @@ public class PostgreSqlResetTests
         Assert.Equal([1, 1, 100, 50], (int[])ids!);
     }
 
+    // SharedNumbers feeds the kept Countries and the emptied Tickets; HiLoNumbers feeds no default, as EF Core's HiLo.
+    [Fact]
+    public async Task ResetDataAsync_ShouldKeepCountingSequences_WhenAKeptTableOrTheAppDrawsFromThem()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync();
+
+        await db.Fixture.ResetDataAsync();
+
+        object? next = await db.ScalarAsync("""SELECT ARRAY[nextval('"SharedNumbers"'), nextval('"HiLoNumbers"')]""");
+        Assert.Equal([202L, 301L], (long[])next!);
+    }
+
     [Fact]
     public async Task ResetDataAsync_ShouldKeepTheListedTablesAndAnyMigrationsHistory_WhenTheyAreWrittenAnyWay()
     {
@@ -77,6 +89,10 @@ public class PostgreSqlResetTests
                 PARTITION BY RANGE ("Day");
             CREATE TABLE "Readings2026" PARTITION OF "Readings" FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
             CREATE SEQUENCE "InvoiceNumbers" START 100;
+            CREATE SEQUENCE "SharedNumbers" START 200;
+            CREATE SEQUENCE "HiLoNumbers" START 300;
+            ALTER TABLE "Countries" ADD COLUMN "Number" int NOT NULL DEFAULT nextval('"SharedNumbers"');
+            CREATE TABLE "Tickets" ("Id" int PRIMARY KEY DEFAULT nextval('"SharedNumbers"'));
             CREATE TABLE "Invoices" ("Id" int PRIMARY KEY DEFAULT nextval('"InvoiceNumbers"'));
             INSERT INTO "Countries" VALUES ('North');
             INSERT INTO ref."Regions" VALUES ('East');
@@ -87,6 +103,8 @@ public class PostgreSqlResetTests
             INSERT INTO "Orders" ("CustomerId") VALUES (1);
             INSERT INTO "Readings" ("Day") VALUES ('2026-05-01');
             INSERT INTO "Invoices" DEFAULT VALUES;
+            INSERT INTO "Tickets" DEFAULT VALUES;
+            SELECT nextval('"HiLoNumbers"');
             """;
 
         private ResetDatabase(PostgresNotesFixture fixture)

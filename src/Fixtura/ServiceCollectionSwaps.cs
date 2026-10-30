@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Fixtura;
 
@@ -66,8 +67,9 @@ public static class ServiceCollectionSwaps
             : registration.ImplementationInstance is { } instance
                 ? ServiceDescriptor.KeyedSingleton(typeof(THostedService), key, instance)
                 : ServiceDescriptor.KeyedSingleton(typeof(THostedService), key, typeof(THostedService)));
-        services.AddSingleton(provider =>
-            new DeferredHostedService<THostedService>(provider.GetRequiredKeyedService<THostedService>(key)));
+        services.AddSingleton(provider => new DeferredHostedService<THostedService>(
+            provider.GetRequiredKeyedService<THostedService>(key),
+            provider.GetService<ILoggerFactory>()?.CreateLogger(typeof(THostedService))));
         services.AddHostedService(provider => provider.GetRequiredService<DeferredHostedService<THostedService>>());
         return services;
     }

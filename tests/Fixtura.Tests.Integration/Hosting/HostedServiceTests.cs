@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Fixtura.Tests.Integration.Hosting;
 
@@ -58,6 +59,85 @@ public sealed class DeferredWorkerFixture : TestHost<Program>
         .DeferHostedService<WaitingWorker>();
 }
 
+// Records each lifecycle call the host makes, in order.
+public sealed class LifecycleWorker : IHostedLifecycleService
+{
+    public List<string> Calls { get; } = [];
+
+    public Task StartingAsync(CancellationToken cancellationToken) => Record("Starting");
+
+    public Task StartAsync(CancellationToken cancellationToken) => Record("Start");
+
+    public Task StartedAsync(CancellationToken cancellationToken) => Record("Started");
+
+    public Task StoppingAsync(CancellationToken cancellationToken) => Record("Stopping");
+
+    public Task StopAsync(CancellationToken cancellationToken) => Record("Stop");
+
+    public Task StoppedAsync(CancellationToken cancellationToken) => Record("Stopped");
+
+    private Task Record(string call)
+    {
+        Calls.Add(call);
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class DeferredLifecycleFixture : TestHost<Program>
+{
+    public LifecycleWorker Worker { get; } = new();
+
+    protected override void Configure(TestHostBuilder host) => host.Services
+        .Configure(services => services.AddSingleton<IHostedService>(Worker))
+        .DeferHostedService<LifecycleWorker>();
+}
+
+// Keeps what the app logs, so a test can see a log no test output would show.
+public sealed class LogCapture : ILoggerProvider, ILogger
+{
+    private readonly List<string> _lines = [];
+
+    public IReadOnlyList<string> Lines
+    {
+        get
+        {
+            lock (_lines)
+            {
+                return [.. _lines];
+            }
+        }
+    }
+
+    public ILogger CreateLogger(string categoryName) => this;
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        lock (_lines)
+        {
+            _lines.Add($"{formatter(state, exception)}: {exception?.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+}
+
+// A deferred worker that crashes, in a fixture that doesn't fail on crashes, so only the log can show it.
+public sealed class LoggedCrashFixture : TestHost<Program>
+{
+    public LogCapture Log { get; } = new();
+
+    protected override void Configure(TestHostBuilder host) => host.Services
+        .Configure(services => services.AddLogging(logging => logging.AddProvider(Log)).AddHostedService<CrashingWorker>())
+        .DeferHostedService<CrashingWorker>();
+}
+
 public sealed class DeferredCrashFixture : TestHost<Program>
 {
     protected override void Configure(TestHostBuilder host)
@@ -103,6 +183,29 @@ public class DeferredHostedServiceTests(DeferredWorkerFixture api) : IClassFixtu
 
 public class HostedServiceLifetimeTests
 {
+    [Fact]
+    public async Task StartHostedServiceAsync_ShouldRunTheWholeLifecycle_WhenTheServiceHasOne()
+    {
+        var api = new DeferredLifecycleFixture();
+        await api.InitializeAsync();
+        await api.StartHostedServiceAsync<LifecycleWorker>(TestContext.Current.CancellationToken);
+
+        await api.DisposeAsync();
+
+        Assert.Equal(["Starting", "Start", "Started", "Stopping", "Stop", "Stopped"], api.Worker.Calls);
+    }
+
+    [Fact]
+    public async Task StartHostedServiceAsync_ShouldLogTheCrash_WhenADeferredWorkerCrashes()
+    {
+        await using var api = new LoggedCrashFixture();
+        await api.InitializeAsync();
+        CrashingWorker worker = await api.StartHostedServiceAsync<CrashingWorker>(TestContext.Current.CancellationToken);
+        await Record.ExceptionAsync(() => worker.ExecuteTask!);
+
+        await api.EventuallyAsync(_ => Assert.Contains("BackgroundService failed: The queue is gone.", api.Log.Lines));
+    }
+
     [Fact]
     public async Task DisposeAsync_ShouldStopAStartedDeferredService_WhenTheHostStops()
     {

@@ -59,8 +59,9 @@ internal static class PostgreSqlReset
             return found;
         }
 
-        // A sequence restarts only when all the column defaults that draw from it are on emptied tables. One no default draws
-        // from, such as EF Core's HiLo, keeps counting: the app still holds the values it reserved.
+        // A sequence restarts when all the column defaults that draw from it are on emptied tables, or when an emptied
+        // table's column owns it, as a serial's does. One no default draws from, such as EF Core's HiLo, keeps counting: the
+        // app still holds the values it reserved.
         var clearedIds = cleared.Select(table => table.Id).ToHashSet();
         IEnumerable<string> restarted = defaults.GroupBy(use => use.Sequence)
             .Where(sequence => sequence.All(use => clearedIds.Contains(use.Table)))

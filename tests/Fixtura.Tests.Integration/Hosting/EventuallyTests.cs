@@ -131,6 +131,7 @@ public class EventuallyCrashTests
     {
         var api = new LateCrashFixture();
         await api.InitializeAsync();
+        _ = api.Services;
         var waited = Stopwatch.StartNew();
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => api.EventuallyAsync(_ =>

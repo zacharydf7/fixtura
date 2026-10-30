@@ -28,8 +28,8 @@ A container starts on first use and is shared by every fixture in the test run, 
 
 `ResetDataAsync` truncates every table in the fixture's databases in one statement, so foreign keys don't need an order:
 
-- Identity columns, and sequences that only emptied tables' column defaults draw from, start over. A sequence the app
-  draws from itself, such as EF Core's HiLo, keeps counting.
+- Identity columns, sequences an emptied table's column owns, such as a serial's, and sequences that only emptied tables'
+  column defaults draw from, start over. A sequence the app draws from itself, such as EF Core's HiLo, keeps counting.
 - The app's delete triggers don't run.
 - EF Core's migrations history keeps its rows, whatever its table's name, and so do the tables in
   `PostgreSqlOptions.KeepOnReset`, written as `Table`, `schema.Table` or `"schema"."Table"`. A name that matches no

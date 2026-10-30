@@ -21,6 +21,8 @@ public sealed class NotesReader(IServiceProvider services) : IHostedService
 
 public sealed class MigratedNotesFixture : TestHost<Program>
 {
+    public bool StartServicesConcurrently { get; init; }
+
     protected override void Configure(TestHostBuilder host)
     {
         SqlServerResource sql = host.UseSqlServer(new SqlServerOptions
@@ -32,7 +34,8 @@ public sealed class MigratedNotesFixture : TestHost<Program>
         host.Services.Configure(services => services
             .AddDbContext<NotesDb>(db => db.UseSqlServer(sql.Database("Notes")))
             .AddSingleton<NotesReader>()
-            .AddHostedService(provider => provider.GetRequiredService<NotesReader>()));
+            .AddHostedService(provider => provider.GetRequiredService<NotesReader>())
+            .Configure<HostOptions>(options => options.ServicesStartConcurrently = StartServicesConcurrently));
         host.MigrateBeforeStart<NotesDb>();
         host.SeedOnReset<NotesDb>(db => db.Notes.Add(new Note { Text = "welcome" }));
     }
@@ -91,6 +94,53 @@ public class SeedAtStartTests
         List<string> texts = await scope.ServiceProvider.GetRequiredService<NotesDb>().Notes
             .Select(note => note.Text).ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(["welcome"], texts);
+    }
+
+    [Fact]
+    public async Task SeedOnReset_ShouldSeedTheFixture_WhenItResetsBeforeItsBuildAfterAnOverrideStarted()
+    {
+        await using var api = new MigratedNotesFixture();
+        await api.InitializeAsync();
+        await using (TestHost<Program> overridden = api.WithOverrides(_ => { }))
+        {
+            _ = overridden.Services;
+        }
+
+        await api.ResetDataAsync();
+
+        Assert.Equal(["welcome"], await NoteTextsAsync(api));
+    }
+
+    [Fact]
+    public async Task SeedOnReset_ShouldSeedAnOverride_WhenItResetsBeforeItsBuild()
+    {
+        await using var api = new MigratedNotesFixture();
+        await api.InitializeAsync();
+        _ = api.Services;
+        await using TestHost<Program> overridden = api.WithOverrides(_ => { });
+
+        await overridden.ResetDataAsync();
+
+        Assert.Equal(["welcome"], await NoteTextsAsync(overridden));
+    }
+
+    // Concurrently started services run their StartingAsync at once, so the seed would race the migration.
+    [Fact]
+    public async Task MigrateBeforeStart_ShouldMigrateBeforeSeeding_WhenTheAppStartsServicesConcurrently()
+    {
+        await using var api = new MigratedNotesFixture { StartServicesConcurrently = true };
+        await api.InitializeAsync();
+
+        int? countAtStart = api.Services.GetRequiredService<NotesReader>().CountAtStart;
+
+        Assert.Equal(1, countAtStart);
+    }
+
+    private static async Task<List<string>> NoteTextsAsync(TestHost<Program> host)
+    {
+        using IServiceScope scope = host.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<NotesDb>().Notes
+            .Select(note => note.Text).ToListAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
