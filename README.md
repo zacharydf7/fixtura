@@ -141,16 +141,24 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
 - `Options<TOptions>` changes the bound options after the app's own post-configuration, which suits typed lists. It
   reaches every instance, named or not, such as each authentication scheme's; `Options<TOptions>(name, ...)` changes
   one.
+- `host.Environment = "Testing"` runs the app in that environment, so it loads `appsettings.Testing.json`; it's
+  Development unless set. `host.WebHost(web => ...)` reaches the web host builder for anything else, such as the
+  content root; it runs after the fixture's other changes.
 
 ## Test users
 
 ```csharp
 HttpClient client = await api.CreateClientAsync(TestUser.Named("ann").WithRoles("Manager").WithClaim("tenant", "north"));
 HttpClient anonymous = await api.CreateClientAsync();
+HttpClient noRedirects = await api.CreateClientAsync(null, new TestClientOptions { AllowAutoRedirect = false });
 ```
 
+`TestClientOptions` also sets a client's `BaseAddress`, its own `DelegatingHandler`s and the `Scheme` its user signs in
+through.
+
 The user signs in through the app's own authentication handler, so its token or cookie events and account checks still
-run. Choose how with `host.Users.SignIn`:
+run, through the app's default authenticate scheme unless `host.Users.Scheme` names another, as an app whose default
+forwards to others needs. Choose how with `host.Users.SignIn`:
 
 | `UserSignIn` | How |
 | --- | --- |

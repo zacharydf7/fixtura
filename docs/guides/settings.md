@@ -9,6 +9,15 @@
   client's; `Options<TOptions>(name, ...)` changes only the one with that name.
 - Later calls win, key by key.
 
+## The environment
+
+`host.Environment = "Testing"` runs the app in that environment, so it loads `appsettings.Testing.json` and its
+environment checks see `Testing`. Apps run as Development unless it's set, as WebApplicationFactory runs them.
+
+`host.WebHost(web => ...)` reaches the web host builder itself, for anything the fixture has no member for, such as the
+content root or a third-party container's test configuration. It runs after the fixture's other changes, though a key
+set there with `UseSetting` still loses to `host.Settings`, which the app reads last.
+
 ## When the app reads them
 
 Settings reach `Program.cs` before `builder.Build()`, so code that reads configuration early, such as a feature flag

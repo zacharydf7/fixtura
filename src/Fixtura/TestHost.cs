@@ -116,29 +116,45 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>
     /// A client signed in as the user through the app's own authentication, or anonymous when no user is given.
     /// </summary>
-    public async Task<HttpClient> CreateClientAsync(TestUser? user = null)
+    public Task<HttpClient> CreateClientAsync(TestUser? user = null) => CreateClientAsync(user, new TestClientOptions());
+
+    /// <summary>
+    /// A client signed in as the user, or anonymous when no user is given, built with <paramref name="options"/>, such as
+    /// one that doesn't follow redirects.
+    /// </summary>
+    public async Task<HttpClient> CreateClientAsync(TestUser? user, TestClientOptions options)
     {
         HostFactory factory = await FactoryAsync();
-        SignedInUser? signedIn = user is null ? null : await _builder.Users.SignInAsync(user, factory.Services);
+        SignedInUser? signedIn = user is null ? null : await _builder.Users.SignInAsync(user, factory.Services, options.Scheme);
 
         // WebApplicationFactory records every client it creates in a list that isn't thread-safe.
         lock (_gate)
         {
-            if (signedIn?.Cookie is not null)
+            // TestServer accepts any scheme, so a cookie user's client uses HTTPS, where a renewed Secure cookie keeps being
+            // sent, whatever base address the test gave.
+            Uri address = options.BaseAddress ?? factory.ClientOptions.BaseAddress;
+            if (signedIn?.Cookie is not null && _builder.Server == ServerKind.TestServer)
             {
-                // In a cookie container, unlike a header, the app's own responses can renew or clear the cookie. The sign-in
-                // cookie holds the whole ticket unsplit, so the container must accept any size. TestServer accepts any
-                // scheme, and over HTTPS a renewed Secure cookie keeps being sent.
-                Uri address = _builder.Server == ServerKind.TestServer
-                    ? new Uri("https://localhost")
-                    : factory.ClientOptions.BaseAddress;
-                var cookies = new CookieContainer { MaxCookieSize = int.MaxValue };
-                cookies.Add(address, signedIn.Cookie);
-                return factory.CreateDefaultClient(address, new RedirectHandler(), new CookieContainerHandler(cookies));
+                address = new UriBuilder(address) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
             }
 
-            HttpClient client = factory.CreateClient();
-            if (signedIn is not null)
+            // In a cookie container, unlike a header, the app's own responses can renew or clear the cookie. The sign-in
+            // cookie holds the whole ticket unsplit, so the container must accept any size.
+            var cookies = new CookieContainer { MaxCookieSize = int.MaxValue };
+            if (signedIn?.Cookie is not null)
+            {
+                cookies.Add(address, signedIn.Cookie);
+            }
+
+            List<DelegatingHandler> handlers = [.. options.Handlers];
+            if (options.AllowAutoRedirect)
+            {
+                handlers.Add(new RedirectHandler());
+            }
+
+            handlers.Add(new CookieContainerHandler(cookies));
+            HttpClient client = factory.CreateDefaultClient(address, [.. handlers]);
+            if (signedIn?.BearerToken is not null)
             {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", signedIn.BearerToken);
             }

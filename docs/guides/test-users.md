@@ -16,6 +16,13 @@ still run. Choose how with `host.Users.SignIn`:
 Claim types come from the app's own options, so the principal reads the same whether or not the app maps inbound
 claims.
 
+## Which scheme
+
+Users sign in through the app's default authenticate scheme, whose handler must match `SignIn`: the JWT bearer handler
+or the cookie handler. Name the scheme with `host.Users.Scheme = "Bearer"` when the default is a policy scheme that
+forwards to others, the app has several bearer schemes, or its endpoints name their scheme in
+`[Authorize(AuthenticationSchemes = ...)]`. A client can name its own with `TestClientOptions.Scheme`.
+
 ## Apps with a user store
 
 Apps that check each request against their user store, as ASP.NET Identity's security-stamp check does, need the user

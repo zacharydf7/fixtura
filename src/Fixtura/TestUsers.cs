@@ -38,6 +38,12 @@ public sealed class TestUsers
     /// <summary>How users reach the app; <see cref="UserSignIn.AppJwtBearer"/> unless set.</summary>
     public UserSignIn SignIn { get; set; } = UserSignIn.AppJwtBearer;
 
+    /// <summary>
+    /// The authentication scheme users sign in through, such as "Bearer"; the app's default authenticate scheme unless
+    /// set. Name one when the default forwards to others or the app has several. Its handler must match <see cref="SignIn"/>.
+    /// </summary>
+    public string? Scheme { get; set; }
+
     /// <summary>Creates or updates each user in the app's store before it signs in. See <see cref="ITestUserSeeder"/>.</summary>
     public TestUsers SeedWith<TSeeder>() where TSeeder : ITestUserSeeder
     {
@@ -46,7 +52,7 @@ public sealed class TestUsers
     }
 
     // Shares the seeding lock and what was seeded, because an override host seeds the same store as its parent.
-    internal TestUsers Copy() => new(_seeding, _additions) { SignIn = SignIn, _seeder = _seeder };
+    internal TestUsers Copy() => new(_seeding, _additions) { SignIn = SignIn, Scheme = Scheme, _seeder = _seeder };
 
     internal void Apply(IServiceCollection services)
     {
@@ -57,25 +63,28 @@ public sealed class TestUsers
         }
     }
 
-    internal async Task<SignedInUser> SignInAsync(TestUser user, IServiceProvider services)
+    internal async Task<SignedInUser> SignInAsync(TestUser user, IServiceProvider services, string? scheme)
     {
-        string scheme = await ResolveSchemeAsync(services);
+        scheme = await ResolveSchemeAsync(services, scheme ?? Scheme);
         IReadOnlyList<Claim>? seeded = _seeder is null ? null : await SeedAsync(user, services);
         return SignIn == UserSignIn.AppJwtBearer
             ? new SignedInUser(CreateToken(services, scheme, user, seeded), null)
             : new SignedInUser(null, await CreateCookieAsync(services, scheme, user, seeded));
     }
 
-    private async Task<string> ResolveSchemeAsync(IServiceProvider services)
+    private async Task<string> ResolveSchemeAsync(IServiceProvider services, string? name)
     {
         var schemes = services.GetRequiredService<IAuthenticationSchemeProvider>();
-        AuthenticationScheme? scheme = await schemes.GetDefaultAuthenticateSchemeAsync();
+        AuthenticationScheme? scheme = name is null
+            ? await schemes.GetDefaultAuthenticateSchemeAsync()
+            : await schemes.GetSchemeAsync(name);
         Type expected = SignIn == UserSignIn.AppJwtBearer ? typeof(JwtBearerHandler) : typeof(CookieAuthenticationHandler);
         if (scheme is null || !expected.IsAssignableFrom(scheme.HandlerType))
         {
+            string wanted = name is null ? $"a default {expected.Name} scheme" : $"a {expected.Name} scheme named '{name}'";
             string found = scheme is null ? "the app has none" : $"'{scheme.Name}' uses {scheme.HandlerType.Name}";
-            throw new InvalidOperationException(
-                $"UserSignIn.{SignIn} needs a default {expected.Name} scheme, but {found}. Check host.Users.SignIn.");
+            throw new InvalidOperationException($"UserSignIn.{SignIn} needs {wanted}, but {found}. Check host.Users.SignIn, "
+                + "or name the scheme to sign in through with host.Users.Scheme.");
         }
 
         return scheme.Name;

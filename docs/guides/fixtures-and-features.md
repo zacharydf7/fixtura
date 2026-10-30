@@ -40,8 +40,20 @@ caring that one already includes the other.
 | Member | What it does |
 | --- | --- |
 | `CreateClientAsync(user?)` | A client for the app, signed in as the user or anonymous |
+| `CreateClientAsync(user, options)` | The same, built with `TestClientOptions`; see below |
 | `Services` | The app's root services |
 | `CreateScope()` | A scope for resolving scoped services such as a DbContext |
 | `ResetDataAsync()` | Puts the fixture's data back to its starting state; see [Resetting data](resetting-data.md) |
 | `WithOverrides(...)` | A second host with extra changes for a few tests; see [Kestrel and per-test overrides](kestrel-and-overrides.md) |
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |
+
+## Client options
+
+Most tests use the default client. `TestClientOptions` changes it for the few that need something else:
+
+| Option | What it does |
+| --- | --- |
+| `AllowAutoRedirect` | `false` returns redirects instead of following them, so a test can assert a 302 or a redirect to the login page |
+| `BaseAddress` | Where relative request URIs resolve, such as a path base |
+| `Handlers` | `DelegatingHandler`s each request passes through first, outermost first; give each client new ones |
+| `Scheme` | The scheme this client's user signs in through; see [Test users](test-users.md) |

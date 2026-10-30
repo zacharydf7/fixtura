@@ -1,3 +1,19 @@
 #nullable enable
+Fixtura.TestClientOptions
+Fixtura.TestClientOptions.AllowAutoRedirect.get -> bool
+Fixtura.TestClientOptions.AllowAutoRedirect.init -> void
+Fixtura.TestClientOptions.BaseAddress.get -> System.Uri?
+Fixtura.TestClientOptions.BaseAddress.init -> void
+Fixtura.TestClientOptions.Handlers.get -> System.Collections.Generic.IReadOnlyList<System.Net.Http.DelegatingHandler!>!
+Fixtura.TestClientOptions.Handlers.init -> void
+Fixtura.TestClientOptions.Scheme.get -> string?
+Fixtura.TestClientOptions.Scheme.init -> void
+Fixtura.TestClientOptions.TestClientOptions() -> void
+Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
+Fixtura.TestHostBuilder.Environment.get -> string?
+Fixtura.TestHostBuilder.Environment.set -> void
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
+Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
+Fixtura.TestUsers.Scheme.get -> string?
+Fixtura.TestUsers.Scheme.set -> void

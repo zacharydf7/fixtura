@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -44,6 +45,15 @@ public sealed class BrokenShutdown : IHostedService
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task StopAsync(CancellationToken cancellationToken) => throw new InvalidOperationException("Shutdown failed.");
+}
+
+public sealed class TestingEnvironmentFixture : TestHost<Program>
+{
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Environment = "Testing";
+        host.WebHost(web => web.UseSetting("Probe:WebHost", "applied"));
+    }
 }
 
 public sealed class UnavailableFixture : TestHost<Program>

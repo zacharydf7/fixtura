@@ -14,6 +14,7 @@ public sealed class TestHostBuilder
     private readonly List<ITestResource> _resources = [];
     private readonly List<Action<IServiceCollection>> _serviceSteps = [];
     private readonly List<Func<IServiceProvider, Task>> _resetSteps = [];
+    private readonly List<Action<IWebHostBuilder>> _webHostSteps = [];
     private readonly SettingsOverlay _settings = new();
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
     private readonly TestHostBuilder? _parent;
@@ -31,6 +32,8 @@ public sealed class TestHostBuilder
         _features.UnionWith(parent._features);
         _serviceSteps.AddRange(parent._serviceSteps);
         _resetSteps.AddRange(parent._resetSteps);
+        _webHostSteps.AddRange(parent._webHostSteps);
+        Environment = parent.Environment;
         _settings.Merge(parent._settings);
         _namePrefix = parent._namePrefix;
         IsOverride = true;
@@ -51,6 +54,12 @@ public sealed class TestHostBuilder
 
     /// <summary>Which server the app runs on; the in-memory <see cref="ServerKind.TestServer"/> unless set.</summary>
     public ServerKind Server { get; set; } = ServerKind.TestServer;
+
+    /// <summary>
+    /// The app's environment, such as "Testing" to load <c>appsettings.Testing.json</c>. Development unless set, as
+    /// WebApplicationFactory runs apps; <see cref="Microsoft.Extensions.Hosting.Environments"/> names the standard ones.
+    /// </summary>
+    public string? Environment { get; set; }
 
     internal bool IsOverride { get; }
 
@@ -152,6 +161,17 @@ public sealed class TestHostBuilder
         return this;
     }
 
+    /// <summary>
+    /// Changes the web host directly, for what the builder has no member for, such as the content root or a third-party
+    /// container's test configuration. Runs after the builder's other changes, though a key set there with
+    /// <c>UseSetting</c> still loses to <c>Settings</c>.
+    /// </summary>
+    public TestHostBuilder WebHost(Action<IWebHostBuilder> configure)
+    {
+        _webHostSteps.Add(configure);
+        return this;
+    }
+
     /// <summary>A name no other fixture instance uses, for in-memory databases and similar shared stores.</summary>
     public string UniqueName(string name) => $"{_namePrefix}_{name}";
 
@@ -174,6 +194,11 @@ public sealed class TestHostBuilder
 
     internal void Apply(IWebHostBuilder web, Action<string> sendDiagnosticMessage)
     {
+        if (Environment is not null)
+        {
+            web.UseEnvironment(Environment);
+        }
+
         // Host settings become Program.Main arguments, the only configuration an eager read in Program.cs can see.
         foreach (KeyValuePair<string, string?> setting in _settings.Values)
         {
@@ -195,6 +220,11 @@ public sealed class TestHostBuilder
                 TestOutputLoggerProvider.AddTo(services, level, sendDiagnosticMessage);
             }
         });
+
+        foreach (Action<IWebHostBuilder> step in _webHostSteps)
+        {
+            step(web);
+        }
     }
 
     // Responses set while configuring are what a reset brings back.
