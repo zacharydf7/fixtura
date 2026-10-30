@@ -68,8 +68,9 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 
     /// <summary>
     /// Empties every table in this fixture's databases, except EF Core's migrations history and
-    /// <see cref="SqlServerOptions.KeepOnReset"/>, and restarts identity columns, so the next test starts from the schema
-    /// the app created.
+    /// <see cref="SqlServerOptions.KeepOnReset"/>, and restarts identity columns and the sequences their defaults draw
+    /// from, so the next test starts from the schema the app created. Throws when a kept name matches no table in any of
+    /// them.
     /// </summary>
     public async Task ResetAsync()
     {
@@ -78,10 +79,20 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
             return;
         }
 
-        foreach (string database in await FixtureDatabasesAsync(_server))
+        List<string> databases = await FixtureDatabasesAsync(_server);
+        var found = new HashSet<string>();
+        foreach (string database in databases)
         {
             string connection = new SqlConnectionStringBuilder(_server) { InitialCatalog = database }.ConnectionString;
-            await SqlServerReset.ResetAsync(connection, options.KeepOnReset);
+            found.UnionWith(await SqlServerReset.ResetAsync(connection, options.KeepOnReset));
+        }
+
+        // Until the app creates its databases there is nothing a kept name could match.
+        List<string> missing = options.KeepOnReset.Where(name => !found.Contains(name)).ToList();
+        if (databases.Count > 0 && missing.Count > 0)
+        {
+            throw new InvalidOperationException($"KeepOnReset names {string.Join(", ", missing)}, which match no table " +
+                "in the fixture's databases. Write each as \"Table\", \"schema.Table\" or \"[schema].[Table]\".");
         }
     }
 

@@ -56,6 +56,19 @@ public class ResetTests(ResettableFixture api) : IClassFixture<ResettableFixture
 
         Assert.Equal(["resource", "step"], api.Resets);
     }
+
+    [Fact]
+    public async Task ResetDataAsync_ShouldResetTheFixturesResources_WhenCalledOnAnOverrideOfAnOverride()
+    {
+        await using TestHost<Program> outer = api.WithOverrides(_ => { });
+        await using TestHost<Program> inner = outer.WithOverrides(_ => { });
+        _ = inner.Services;
+        api.Resets.Clear();
+
+        await inner.ResetDataAsync();
+
+        Assert.Equal(["resource", "step"], api.Resets);
+    }
 }
 
 // A fixture of its own, so no other test has built its host first.

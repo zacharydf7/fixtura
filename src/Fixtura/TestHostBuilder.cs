@@ -27,7 +27,7 @@ public sealed class TestHostBuilder
     // A copy for WithOverrides: the parent's steps, settings and names, but none of its resources, which the parent owns.
     private TestHostBuilder(TestHostBuilder parent) : this()
     {
-        _parent = parent;
+        _parent = parent._parent ?? parent;
         _features.UnionWith(parent._features);
         _serviceSteps.AddRange(parent._serviceSteps);
         _resetSteps.AddRange(parent._resetSteps);

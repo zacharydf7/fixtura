@@ -3,7 +3,8 @@ using Microsoft.Data.SqlClient;
 
 namespace Fixtura;
 
-// Empties one database's tables and restarts their identity columns, leaving the schema and the kept tables alone.
+// Empties one database's tables and restarts their identity columns and the sequences their defaults draw from, leaving
+// the schema and the kept tables alone.
 internal static class SqlServerReset
 {
     // A history table is emptied with the system-versioned table it belongs to, so it isn't listed on its own.
@@ -11,7 +12,10 @@ internal static class SqlServerReset
         SELECT t.object_id, s.name, t.name, CAST(ic.seed_value AS bigint), CAST(ic.increment_value AS bigint),
             CAST(CASE WHEN ic.last_value IS NULL THEN 0 ELSE 1 END AS bit), hs.name, h.name,
             CASE WHEN t.history_retention_period > 0
-                THEN CONCAT(t.history_retention_period, ' ', t.history_retention_period_unit_desc) END
+                THEN CONCAT(t.history_retention_period, ' ', t.history_retention_period_unit_desc) END,
+            CAST(CASE WHEN EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = t.object_id AND c.name = 'MigrationId')
+                AND EXISTS (SELECT 1 FROM sys.columns c WHERE c.object_id = t.object_id AND c.name = 'ProductVersion')
+                THEN 1 ELSE 0 END AS bit)
         FROM sys.tables t
         JOIN sys.schemas s ON s.schema_id = t.schema_id
         LEFT JOIN sys.identity_columns ic ON ic.object_id = t.object_id
@@ -20,36 +24,69 @@ internal static class SqlServerReset
         WHERE t.is_ms_shipped = 0 AND t.temporal_type <> 1;
         SELECT fk.name, fk.parent_object_id, fk.referenced_object_id, fk.is_disabled FROM sys.foreign_keys fk;
         SELECT tr.parent_id, tr.name FROM sys.triggers tr WHERE tr.parent_class = 1 AND tr.is_disabled = 0;
+        SELECT s.name, q.name, dc.parent_object_id
+        FROM sys.sequences q
+        JOIN sys.schemas s ON s.schema_id = q.schema_id
+        JOIN sys.sql_expression_dependencies d ON d.referenced_id = q.object_id
+        JOIN sys.default_constraints dc ON dc.object_id = d.referencing_id;
         """;
 
-    public static async Task ResetAsync(string connectionString, IReadOnlyList<string> keep)
+    // Returns the kept names this database has, so the caller can tell which names match nothing in any database.
+    public static async Task<List<string>> ResetAsync(string connectionString, IReadOnlyList<string> keep)
     {
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
-        (List<Table> tables, List<ForeignKey> foreignKeys, List<Trigger> triggers) = await ReadSchemaAsync(connection);
-        List<Table> cleared = tables.Where(table => !IsKept(table, keep)).ToList();
-        if (cleared.Count == 0)
+        (List<Table> tables, List<ForeignKey> foreignKeys, List<Trigger> triggers, List<SequenceDefault> defaults) =
+            await ReadSchemaAsync(connection);
+        List<string> found = keep.Where(name => tables.Any(table => Names(name, table.Schema, table.Name))).ToList();
+
+        // A name that also matches a table, such as dbo.Prices next to its history table history.Prices, means the table.
+        foreach (Table table in tables.Where(table => table.HistoryName is not null))
         {
-            return;
+            string? history = keep.FirstOrDefault(name =>
+                !found.Contains(name) && Names(name, table.HistorySchema!, table.HistoryName!));
+            if (history is not null)
+            {
+                throw new InvalidOperationException($"KeepOnReset names {history}, the history table of {table.Schema}." +
+                    $"{table.Name}. A history table keeps or loses its rows with its table, so name {table.Schema}.{table.Name}.");
+            }
         }
 
-        await using var command = new SqlCommand(BuildScript(cleared, foreignKeys, triggers), connection);
+        // EF Core's migrations history always stays, or the app would try to migrate an existing schema again.
+        List<Table> cleared = tables
+            .Where(table => !table.IsMigrationsHistory && !IsKept(table.Schema, table.Name, keep)).ToList();
+
+        // A sequence restarts only when all the column defaults that draw from it are on emptied tables. One no default draws
+        // from, such as EF Core's HiLo, keeps counting: the app still holds the values it reserved.
+        var clearedIds = cleared.Select(table => table.Id).ToHashSet();
+        List<string> restarted = defaults.GroupBy(sequence => $"{Quote(sequence.Schema)}.{Quote(sequence.Name)}")
+            .Where(sequence => sequence.All(use => clearedIds.Contains(use.Table)))
+            .Select(sequence => sequence.Key).ToList();
+        if (cleared.Count == 0)
+        {
+            return found;
+        }
+
+        await using var command = new SqlCommand(BuildScript(cleared, restarted, foreignKeys, triggers), connection);
         await command.ExecuteNonQueryAsync();
+        return found;
     }
 
-    private static async Task<(List<Table>, List<ForeignKey>, List<Trigger>)> ReadSchemaAsync(SqlConnection connection)
+    private static async Task<(List<Table>, List<ForeignKey>, List<Trigger>, List<SequenceDefault>)> ReadSchemaAsync(
+        SqlConnection connection)
     {
         var tables = new List<Table>();
         var foreignKeys = new List<ForeignKey>();
         var triggers = new List<Trigger>();
+        var defaults = new List<SequenceDefault>();
         await using var command = new SqlCommand(ListTables, connection);
         await using SqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             tables.Add(new Table(reader.GetInt32(0), reader.GetString(1), reader.GetString(2),
                 reader.IsDBNull(3) ? null : reader.GetInt64(3), reader.IsDBNull(4) ? null : reader.GetInt64(4), reader.GetBoolean(5),
-                reader.IsDBNull(7) ? null : $"{Quote(reader.GetString(6))}.{Quote(reader.GetString(7))}",
-                reader.IsDBNull(8) ? null : reader.GetString(8)));
+                reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetBoolean(9)));
         }
 
         await reader.NextResultAsync();
@@ -64,16 +101,25 @@ internal static class SqlServerReset
             triggers.Add(new Trigger(reader.GetInt32(0), reader.GetString(1)));
         }
 
-        return (tables, foreignKeys, triggers);
+        await reader.NextResultAsync();
+        while (await reader.ReadAsync())
+        {
+            defaults.Add(new SequenceDefault(reader.GetString(0), reader.GetString(1), reader.GetInt32(2)));
+        }
+
+        return (tables, foreignKeys, triggers, defaults);
     }
 
-    // EF Core's migrations history always stays, or the app would try to migrate an existing schema again.
-    private static bool IsKept(Table table, IReadOnlyList<string> keep) =>
-        table.Name.Equals("__EFMigrationsHistory", StringComparison.OrdinalIgnoreCase)
-        || keep.Any(name => name.Equals(table.Name, StringComparison.OrdinalIgnoreCase)
-            || name.Equals($"{table.Schema}.{table.Name}", StringComparison.OrdinalIgnoreCase));
+    private static bool IsKept(string schema, string name, IReadOnlyList<string> keep) =>
+        keep.Any(entry => Names(entry, schema, name));
 
-    private static string BuildScript(List<Table> cleared, List<ForeignKey> foreignKeys, List<Trigger> triggers)
+    // A kept name is written "Name", "schema.Name", "[Name]" or "[schema].[Name]".
+    private static bool Names(string entry, string schema, string name) =>
+        new[] { name, $"{schema}.{name}", Quote(name), $"{Quote(schema)}.{Quote(name)}" }
+            .Any(spelling => spelling.Equals(entry, StringComparison.OrdinalIgnoreCase));
+
+    private static string BuildScript(List<Table> cleared, List<string> restarted, List<ForeignKey> foreignKeys,
+        List<Trigger> triggers)
     {
         (List<Table> ordered, List<Table> cyclic) = DeleteOrder(cleared, foreignKeys);
 
@@ -110,6 +156,9 @@ internal static class SqlServerReset
         script.AddRange(cleared.Where(table => table.IdentityUsed).Select(table =>
             string.Create(CultureInfo.InvariantCulture, $"DBCC CHECKIDENT ('{table.QuotedName.Replace("'", "''")}', "
                 + $"RESEED, {checked(table.Seed!.Value - table.Increment!.Value)}) WITH NO_INFOMSGS;")));
+
+        // Without a value, a sequence restarts at its own start value.
+        script.AddRange(restarted.Select(sequence => $"ALTER SEQUENCE {sequence} RESTART;"));
         script.Add("COMMIT;");
         return string.Join(Environment.NewLine, script);
     }
@@ -141,10 +190,13 @@ internal static class SqlServerReset
 
     private static string Quote(string name) => $"[{name.Replace("]", "]]")}]";
 
+    // A migrations history is recognized by EF Core's columns, so one renamed with MigrationsHistoryTable stays too.
     private sealed record Table(int Id, string Schema, string Name, long? Seed, long? Increment, bool IdentityUsed,
-        string? History, string? Retention)
+        string? HistorySchema, string? HistoryName, string? Retention, bool IsMigrationsHistory)
     {
         public string QuotedName => $"{Quote(Schema)}.{Quote(Name)}";
+
+        public string? History => HistoryName is null ? null : $"{Quote(HistorySchema!)}.{Quote(HistoryName)}";
 
         public string VersioningOptions => Retention is null
             ? $"HISTORY_TABLE = {History}"
@@ -154,4 +206,7 @@ internal static class SqlServerReset
     private sealed record ForeignKey(string Name, int Child, int Parent, bool IsDisabled);
 
     private sealed record Trigger(int Table, string Name);
+
+    // A default constraint on a table that draws from a sequence.
+    private sealed record SequenceDefault(string Schema, string Name, int Table);
 }

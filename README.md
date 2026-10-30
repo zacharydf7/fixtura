@@ -286,9 +286,10 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifet
 ```
 
 - The SQL Server resource empties every table in the fixture's databases, in foreign-key order, and restarts identity
-  columns. The schema stays, so the app doesn't migrate again. System-versioned tables lose their history too, and the
-  app's delete triggers don't run. EF Core's migrations history keeps its rows, and so do the tables in
-  `SqlServerOptions.KeepOnReset`; list reference data the app inserts there.
+  columns, and sequences that only emptied tables' defaults draw from. The schema stays, so the app doesn't migrate
+  again. System-versioned tables lose their history too, and the app's delete triggers don't run. EF Core's migrations
+  history keeps its rows, whatever its table's name, and so do the tables in `SqlServerOptions.KeepOnReset`; list
+  reference data the app inserts there. A name that matches no table throws.
 - `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every EF Core
   in-memory database, so only data seeded with `HasData` is left.
 - `host.OnReset(services => ...)` adds a step of your own, such as clearing what a fake recorded. Steps run after the

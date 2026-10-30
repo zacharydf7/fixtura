@@ -24,9 +24,65 @@ public class SqlResetTests
 
         await db.Sql.ResetAsync();
 
-        int kept = await db.ScalarAsync(
-            "SELECT (SELECT COUNT(*) FROM Countries) + (SELECT COUNT(*) FROM Currencies) + (SELECT COUNT(*) FROM __EFMigrationsHistory)");
-        Assert.Equal(3, kept);
+        int kept = await db.ScalarAsync("""
+            SELECT (SELECT COUNT(*) FROM Countries) + (SELECT COUNT(*) FROM Currencies) + (SELECT COUNT(*) FROM Regions)
+                + (SELECT COUNT(*) FROM __EFMigrationsHistory) + (SELECT COUNT(*) FROM MigrationLog)
+            """);
+        Assert.Equal(5, kept);
+    }
+
+    [Fact]
+    public async Task ResetAsync_ShouldRestartOnlySequencesThatEmptiedTablesDrawFrom_WhenValuesWereDrawn()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync();
+
+        await db.Sql.ResetAsync();
+
+        int invoices = await db.ScalarAsync("SELECT NEXT VALUE FOR InvoiceNumbers");
+        int regions = await db.ScalarAsync("SELECT NEXT VALUE FOR RegionNumbers");
+        int hiLo = await db.ScalarAsync("SELECT NEXT VALUE FOR HiLoNumbers");
+        Assert.Equal((100, 2, 2), (invoices, regions, hiLo));
+    }
+
+    [Fact]
+    public async Task ResetAsync_ShouldThrow_WhenAKeptNameMatchesNoTable()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Countries", "Countrys"]);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(db.Sql.ResetAsync);
+
+        Assert.StartsWith("KeepOnReset names Countrys, which match no table", error.Message);
+    }
+
+    [Fact]
+    public async Task ResetAsync_ShouldThrow_WhenAKeptNameIsAHistoryTable()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Prices", "PricesHistory"]);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(db.Sql.ResetAsync);
+
+        Assert.StartsWith("KeepOnReset names PricesHistory, the history table of dbo.Prices.", error.Message);
+    }
+
+    // dbo.Rates keeps its history in history.Rates, so the name matches both.
+    [Fact]
+    public async Task ResetAsync_ShouldKeepTheTable_WhenAHistoryTableInAnotherSchemaHasItsName()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Rates"]);
+
+        await db.Sql.ResetAsync();
+
+        Assert.Equal(1, await db.ScalarAsync("SELECT COUNT(*) FROM dbo.Rates"));
+    }
+
+    [Fact]
+    public async Task ResetAsync_ShouldNotCheckTheKeptNames_WhenTheAppHasNotCreatedItsDatabaseYet()
+    {
+        await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Countrys"], createDatabase: false);
+
+        Exception? error = await Record.ExceptionAsync(db.Sql.ResetAsync);
+
+        Assert.Null(error);
     }
 
     [Fact]
@@ -113,7 +169,8 @@ public class SqlResetTests
     }
 
     // A fixture's server with one database: kept tables, a self-reference, a chain, a cycle, a system-versioned table,
-    // delete triggers and a migrations history.
+    // delete triggers, sequences drawn by defaults and by the app, and migrations histories under EF Core's default name
+    // and a custom one.
     private sealed class ResetDatabase : IAsyncDisposable
     {
         private const string Schema = """
@@ -132,8 +189,18 @@ public class SqlResetTests
             CREATE TABLE Tickets (Id int IDENTITY(0, 1) PRIMARY KEY, Note nvarchar(10) NULL);
             CREATE TABLE AuditLog (Id int IDENTITY PRIMARY KEY, Entry nvarchar(50) NOT NULL);
             CREATE TABLE SoftBooks (Id int PRIMARY KEY, Deleted bit NOT NULL DEFAULT 0);
+            CREATE SEQUENCE InvoiceNumbers AS int START WITH 100;
+            CREATE SEQUENCE RegionNumbers AS int START WITH 1;
+            CREATE SEQUENCE HiLoNumbers AS int START WITH 1;
+            CREATE TABLE Invoices (Id int PRIMARY KEY DEFAULT (NEXT VALUE FOR InvoiceNumbers));
+            CREATE TABLE Regions (Id int PRIMARY KEY DEFAULT (NEXT VALUE FOR RegionNumbers));
             CREATE TABLE __EFMigrationsHistory (MigrationId nvarchar(150) PRIMARY KEY, ProductVersion nvarchar(32) NOT NULL);
+            CREATE TABLE MigrationLog (MigrationId nvarchar(150) PRIMARY KEY, ProductVersion nvarchar(32) NOT NULL);
             INSERT INTO __EFMigrationsHistory VALUES ('20260101000000_Initial', '10.0.0');
+            INSERT INTO MigrationLog VALUES ('20260101000000_Initial', '10.0.0');
+            INSERT INTO Invoices DEFAULT VALUES;
+            INSERT INTO Regions DEFAULT VALUES;
+            DECLARE @drawn int = NEXT VALUE FOR HiLoNumbers;
             INSERT INTO Countries (Name) VALUES ('North');
             INSERT INTO Currencies VALUES ('EUR');
             INSERT INTO Tickets (Note) VALUES ('a');
@@ -148,15 +215,19 @@ public class SqlResetTests
             UPDATE Departments SET HeadId = 1;
             """;
 
-        // CREATE TRIGGER has to start its own batch.
-        private static readonly string[] Triggers =
+        // CREATE TRIGGER and CREATE SCHEMA have to start their own batch, and Rates needs the history schema first.
+        private static readonly string[] Batches =
         [
             "CREATE TRIGGER AuditOrders ON Orders AFTER DELETE AS "
                 + "INSERT INTO AuditLog (Entry) SELECT 'deleted' FROM deleted;",
             "CREATE TRIGGER SoftDelete ON SoftBooks INSTEAD OF DELETE AS "
                 + "UPDATE SoftBooks SET Deleted = 1 WHERE Id IN (SELECT Id FROM deleted);",
             "CREATE TRIGGER Dormant ON Staff AFTER DELETE AS SET NOCOUNT ON;",
-            "DISABLE TRIGGER Dormant ON Staff;"
+            "DISABLE TRIGGER Dormant ON Staff;",
+            "CREATE SCHEMA history;",
+            "CREATE TABLE Rates (Id int PRIMARY KEY, ValidFrom datetime2 GENERATED ALWAYS AS ROW START NOT NULL, "
+                + "ValidTo datetime2 GENERATED ALWAYS AS ROW END NOT NULL, PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)) "
+                + "WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = history.Rates)); INSERT INTO Rates (Id) VALUES (1);"
         ];
 
         private readonly string _database;
@@ -169,25 +240,30 @@ public class SqlResetTests
 
         public SqlServerResource Sql { get; }
 
-        public static async Task<ResetDatabase> CreateAsync()
+        public static async Task<ResetDatabase> CreateAsync(IReadOnlyList<string>? keep = null, bool createDatabase = true)
         {
             var sql = new SqlServerResource(new SqlServerOptions
             {
                 Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
                 RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
                 ReadyTimeout = TimeSpan.FromSeconds(15),
-                KeepOnReset = ["dbo.Countries", "Currencies", "AuditLog"]
+                KeepOnReset = keep ?? ["dbo.Countries", "Currencies", "AuditLog", "[dbo].[Regions]"]
             });
             string? unavailable = await sql.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
             Assert.SkipWhen(unavailable is not null, unavailable ?? "");
 
             var db = new ResetDatabase(sql, sql.Database("Shop"));
+            if (!createDatabase)
+            {
+                return db;
+            }
+
             var master = new SqlConnectionStringBuilder(db._database) { InitialCatalog = "master" };
             await ExecuteAsync(master.ConnectionString, $"CREATE DATABASE [{new SqlConnectionStringBuilder(db._database).InitialCatalog}]");
             await ExecuteAsync(db._database, Schema);
-            foreach (string trigger in Triggers)
+            foreach (string batch in Batches)
             {
-                await ExecuteAsync(db._database, trigger);
+                await ExecuteAsync(db._database, batch);
             }
 
             return db;

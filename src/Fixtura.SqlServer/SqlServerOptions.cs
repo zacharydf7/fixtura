@@ -19,8 +19,9 @@ public sealed class SqlServerOptions
     public TimeSpan ReadyTimeout { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Tables whose rows <c>ResetDataAsync</c> keeps, such as reference data the app's migrations insert, as "Table" or
-    /// "schema.Table". EF Core's migrations history is always kept.
+    /// Tables whose rows <c>ResetDataAsync</c> keeps, such as reference data the app's migrations insert, as "Table",
+    /// "schema.Table" or "[schema].[Table]". A name that matches no table throws. EF Core's migrations history is always
+    /// kept.
     /// </summary>
     public IReadOnlyList<string> KeepOnReset { get; init; } = [];
 }

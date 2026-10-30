@@ -20,8 +20,13 @@ The SQL Server resource empties every table in the fixture's databases and resta
 - System-versioned tables lose their history too.
 - The app's delete triggers don't run, so an audit trigger doesn't refill a table and a soft-delete trigger doesn't keep
   rows. Triggers the app disabled stay disabled.
-- EF Core's migrations history keeps its rows, and so do the tables in `SqlServerOptions.KeepOnReset`, written as
-  `"Table"` or `"schema.Table"`. List reference data the app inserts there.
+- EF Core's migrations history keeps its rows, whatever its table's name, and so do the tables in
+  `SqlServerOptions.KeepOnReset`, written as `"Table"`, `"schema.Table"` or `"[schema].[Table]"`. List reference data
+  the app inserts there.
+- A `KeepOnReset` name that matches no table in the fixture's databases throws, so a typo can't empty the table it
+  meant to keep without anyone noticing.
+- A sequence restarts when only emptied tables draw from it in a column default, as with EF Core's TPC keys. A sequence
+  the app draws from itself, such as EF Core's HiLo, keeps counting, because the app still holds values it reserved.
 - The schema stays, so the app doesn't migrate again.
 
 ## EF Core in-memory databases
