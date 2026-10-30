@@ -8,6 +8,8 @@
     href: dbcontext-swaps.md
   - name: Settings
     href: settings.md
+  - name: The clock
+    href: clock.md
 - name: Users and the outside world
   items:
   - name: Test users

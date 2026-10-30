@@ -19,17 +19,15 @@ on each other without double-registering anything.
 
 ## Control the clock and the settings
 
-Orders record `TimeProvider.GetUtcNow()`. To check that time, replace the clock with one that stands still:
-
-[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#clock)]
-
-The fixture for this tutorial combines the features, a fixed clock and one setting:
+Orders record `TimeProvider.GetUtcNow()`. To check that time, the fixture gives the app a clock that stands still. The
+fixture for this tutorial combines the features, that clock and one setting:
 
 [!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#customer-fixture)]
 
 - `host.Settings` takes an object shaped like `appsettings.json`. Setting `FreeShippingOver` to 0 makes every order ship
   free, so these tests never call the shipping partner. A later tutorial fakes that partner instead.
-- `Replace<TimeProvider>(instance)` replaces every registration of the clock with one instance.
+- `host.UseFakeClock(Now)` replaces the app's `TimeProvider` with one that stays at `Now` until a test moves it with
+  `shop.Clock.Advance(...)`. See [The clock](../guides/clock.md).
 
 ## Anonymous and signed-in users
 

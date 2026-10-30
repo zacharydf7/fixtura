@@ -145,6 +145,18 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
   Development unless set. `host.WebHost(web => ...)` reaches the web host builder for anything else, such as the
   content root; it runs after the fixture's other changes.
 
+## The clock
+
+```csharp
+host.UseFakeClock(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero));
+api.Clock.Advance(TimeSpan.FromDays(30));   // in a test
+```
+
+`UseFakeClock` replaces the app's `TimeProvider` with a `FakeTimeProvider` that stands still until a test advances it.
+The app's JWT and cookie handlers check expiry against it, and test users' tokens and cookies are issued at its time, so
+a test can let a sign-in expire. `ResetDataAsync` sets it back to its start, and a host from `WithOverrides` shares
+it.
+
 ## Test users
 
 ```csharp

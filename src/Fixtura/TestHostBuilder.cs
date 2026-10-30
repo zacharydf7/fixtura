@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Fixtura;
 
@@ -19,6 +20,8 @@ public sealed class TestHostBuilder
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
     private readonly TestHostBuilder? _parent;
     private LogLevel? _testOutputLevel;
+    private FakeTimeProvider? _clock;
+    private DateTimeOffset _clockStart;
 
     internal TestHostBuilder()
     {
@@ -41,6 +44,8 @@ public sealed class TestHostBuilder
         Http = parent.Http.Copy();
         Server = parent.Server;
         _testOutputLevel = parent._testOutputLevel;
+        _clock = parent._clock;
+        _clockStart = parent._clockStart;
     }
 
     /// <summary>Typed swaps of the app's service registrations.</summary>
@@ -62,6 +67,8 @@ public sealed class TestHostBuilder
     public string? Environment { get; set; }
 
     internal bool IsOverride { get; }
+
+    internal FakeTimeProvider? Clock => _clock;
 
     internal bool LogsToTestOutput => _testOutputLevel is not null;
 
@@ -172,6 +179,27 @@ public sealed class TestHostBuilder
         return this;
     }
 
+    /// <summary>
+    /// Gives the app a clock that stands still at <paramref name="start"/>, now unless given, until a test advances it
+    /// through the fixture's <c>Clock</c>, and that <c>ResetDataAsync</c> sets back to the start. It replaces the app's
+    /// <see cref="TimeProvider"/>, and its JWT and cookie handlers check expiry against it. A host from
+    /// <c>WithOverrides</c> shares its fixture's clock.
+    /// </summary>
+    public TestHostBuilder UseFakeClock(DateTimeOffset? start = null)
+    {
+        if (_clock is not null)
+        {
+            throw new InvalidOperationException(
+                "This host already has a fake clock; a host from WithOverrides shares its fixture's. Move it with Clock instead.");
+        }
+
+        _clockStart = start ?? DateTimeOffset.UtcNow;
+        FakeTimeProvider clock = _clock = new FakeTimeProvider(_clockStart);
+        Users.Clock = clock;
+        Services.Configure(services => FakeClock.AddTo(services, clock));
+        return this;
+    }
+
     /// <summary>A name no other fixture instance uses, for in-memory databases and similar shared stores.</summary>
     public string UniqueName(string name) => $"{_namePrefix}_{name}";
 
@@ -233,6 +261,7 @@ public sealed class TestHostBuilder
     // An override resets its parent's resources, because it shares their data.
     internal async Task ResetAsync(IServiceProvider? services)
     {
+        _clock?.AdjustTime(_clockStart);
         foreach (ITestResource resource in (_parent ?? this)._resources)
         {
             await resource.ResetAsync();

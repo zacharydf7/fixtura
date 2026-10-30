@@ -9,11 +9,13 @@
   </PropertyGroup>
 
   <!-- The oldest versions the package needs, so it never forces a consumer's own references to move. Mvc.Testing
-       before 10.0.3 doesn't carry a test's execution context into TestServer requests, which LogToTestOutput needs. -->
+       before 10.0.3 doesn't carry a test's execution context into TestServer requests, which LogToTestOutput needs.
+       TimeProvider.Testing before 10.0.0 can only move a fake clock back, which a reset does, with an experimental API. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.0.0" />
     <PackageReference Include="xunit.v3.extensibility.core" Version="3.0.0" />
   </ItemGroup>
 

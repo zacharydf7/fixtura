@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace Fixtura;
@@ -164,6 +165,10 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     }
 
     public IServiceScope CreateScope() => Services.CreateScope();
+
+    /// <summary>The app's clock, which a test advances with <c>Advance</c> or <c>SetUtcNow</c>; set up with <c>host.UseFakeClock()</c>.</summary>
+    public FakeTimeProvider Clock =>
+        _builder.Clock ?? throw new InvalidOperationException("Clock needs host.UseFakeClock() in the fixture's Configure.");
 
     /// <summary>
     /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,

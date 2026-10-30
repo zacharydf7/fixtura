@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -52,7 +53,10 @@ public sealed class TestUsers
     }
 
     // Shares the seeding lock and what was seeded, because an override host seeds the same store as its parent.
-    internal TestUsers Copy() => new(_seeding, _additions) { SignIn = SignIn, Scheme = Scheme, _seeder = _seeder };
+    internal TestUsers Copy() => new(_seeding, _additions) { SignIn = SignIn, Scheme = Scheme, Clock = Clock, _seeder = _seeder };
+
+    // The fixture's fake clock, which tokens are issued at; IdentityModel checks them against it only when there is one.
+    internal FakeTimeProvider? Clock { get; set; }
 
     internal void Apply(IServiceCollection services)
     {
@@ -111,12 +115,15 @@ public sealed class TestUsers
         JwtBearerOptions options = services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get(scheme);
         TokenValidationParameters parameters = options.TokenValidationParameters;
         SecurityKey key = AppKeys(parameters).FirstOrDefault(CanSign) ?? _authorityKey;
+        DateTime now = (Clock?.GetUtcNow() ?? DateTimeOffset.UtcNow).UtcDateTime;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
+            IssuedAt = now,
+            NotBefore = now,
             Issuer = parameters.ValidIssuer ?? parameters.ValidIssuers?.FirstOrDefault() ?? options.Authority,
             Audience = parameters.ValidAudience ?? parameters.ValidAudiences?.FirstOrDefault() ?? options.Audience,
             Subject = new ClaimsIdentity(seeded ?? DefaultClaims(user, parameters.NameClaimType, parameters.RoleClaimType)),
-            Expires = DateTime.UtcNow.AddHours(1),
+            Expires = now.AddHours(1),
             SigningCredentials = new SigningCredentials(key, Algorithm(key))
         });
     }
@@ -169,10 +176,12 @@ public sealed class TestUsers
         var identity = new ClaimsIdentity(seeded ?? DefaultClaims(user, ClaimTypes.Name, ClaimTypes.Role), scheme);
 
         // Issued a day ago, so the app's own cookie validation, such as a security-stamp check, runs on the first request.
+        // Issued at the clock the cookie handler checks expiry against, whether a fake clock or the app's own.
+        DateTimeOffset now = options.TimeProvider?.GetUtcNow() ?? DateTimeOffset.UtcNow;
         var properties = new AuthenticationProperties
         {
-            IssuedUtc = DateTimeOffset.UtcNow.AddDays(-1),
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
+            IssuedUtc = now.AddDays(-1),
+            ExpiresUtc = now.AddHours(1)
         };
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, scheme);
 

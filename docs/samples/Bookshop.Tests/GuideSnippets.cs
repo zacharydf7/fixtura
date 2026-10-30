@@ -11,6 +11,16 @@ namespace Bookshop.Tests;
 // Snippets for the guides. They compile with the rest of the samples, so they can't drift from the API, but never run.
 internal static class GuideSnippets
 {
+    public static void FakeClock(TestHostBuilder host, TestHost<Program> shop)
+    {
+        // <fake-clock>
+        host.UseFakeClock(new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero));
+
+        // In a test, a month later:
+        shop.Clock.Advance(TimeSpan.FromDays(30));
+        // </fake-clock>
+    }
+
     public static void ServiceSwaps(TestHostBuilder host)
     {
         // <service-swaps>
@@ -249,4 +259,9 @@ public static class MessageBroker
     public static Task PurgeAsync(string queue) => Task.CompletedTask;
 
     public static Task DeleteQueueAsync(string queue) => Task.CompletedTask;
+}
+
+public sealed class FixedClock(DateTimeOffset now) : TimeProvider
+{
+    public override DateTimeOffset GetUtcNow() => now;
 }

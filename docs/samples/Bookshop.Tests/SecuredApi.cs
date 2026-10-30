@@ -21,13 +21,6 @@ public sealed class QuietBackground : ITestHostFeature
 }
 // </features>
 
-// <clock>
-public sealed class FixedClock(DateTimeOffset now) : TimeProvider
-{
-    public override DateTimeOffset GetUtcNow() => now;
-}
-// </clock>
-
 // <customer-fixture>
 public sealed class CustomerFixture : TestHost<Program>
 {
@@ -39,7 +32,7 @@ public sealed class CustomerFixture : TestHost<Program>
 
         // Every order ships free, so these tests never reach the shipping partner.
         host.Settings(new { Shop = new { FreeShippingOver = 0 } });
-        host.Services.Replace<TimeProvider>(new FixedClock(Now));
+        host.UseFakeClock(Now);
     }
 }
 // </customer-fixture>
