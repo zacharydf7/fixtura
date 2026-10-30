@@ -91,12 +91,18 @@ public sealed class TestHttp
 
     internal void Apply(IServiceCollection services)
     {
+        List<string> unmatched = [];
         foreach (Type client in _typedClients)
         {
             if (!services.Any(descriptor => descriptor.ServiceType == client))
             {
-                throw new NothingMatchedException($"Http.Fake<{client.Name}>");
+                unmatched.Add($"Http.Fake<{client.Name}>");
             }
+        }
+
+        if (unmatched.Count > 0)
+        {
+            throw new NothingMatchedException(unmatched);
         }
 
         if (_fakes.Count > 0 || Unfaked == UnfakedHttpClients.Block)

@@ -15,11 +15,11 @@ public sealed class SqlServerSource
     }
 
     /// <summary>SQL Server LocalDB's default instance, which ships with Visual Studio on Windows.</summary>
-    public static SqlServerSource LocalDb { get; } = From(@"(localdb)\MSSQLLocalDB", () => Task.FromResult<string?>(LocalDbServer));
+    public static SqlServerSource LocalDb { get; } = From("LocalDB", () => Task.FromResult<string?>(LocalDbServer));
 
     /// <summary>The connection string in the environment variable, or LocalDB when the variable isn't set or is blank.</summary>
     public static SqlServerSource EnvironmentVariableOrLocalDb(string name) =>
-        From($"{name} or LocalDB", () => Task.FromResult<string?>(Variable(name) ?? LocalDbServer));
+        From($"the {name} variable, or LocalDB when it isn't set", () => Task.FromResult<string?>(Variable(name) ?? LocalDbServer));
 
     /// <summary>
     /// A server your own code provides, such as one it starts. Return a connection string that names a server, or null when

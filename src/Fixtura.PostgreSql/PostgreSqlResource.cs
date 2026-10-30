@@ -22,7 +22,9 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
     /// </summary>
     public string Database(string name)
     {
-        string server = _server ?? throw new InvalidOperationException("PostgreSQL is not provisioned yet.");
+        string server = _server ?? throw new InvalidOperationException("PostgreSQL is not provisioned yet. Call Database(...) "
+            + "inside a lambda that runs when the host is built, such as the one given to ReplaceDbContext or "
+            + "Settings(() => ...), not in Configure itself.");
         return new NpgsqlConnectionStringBuilder(server) { Database = $"{_prefix}_{name}" }.ConnectionString;
     }
 
@@ -41,7 +43,11 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.ReadyTimeout, TimeSpan.Zero, nameof(PostgreSqlOptions.ReadyTimeout));
         _prefix = namePrefix;
         (string? server, string? reason) = await ResolveAsync();
-        reason ??= await CheckOnceAsync(server!);
+        if (reason is null && await CheckOnceAsync(server!) is { } unreachable)
+        {
+            reason = $"{unreachable} The server came from {options.Source}.";
+        }
+
         if (server is not null && reason is null)
         {
             _server = server;
@@ -120,7 +126,7 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
         }
         catch (Exception exception)
         {
-            return (null, $"{options.Source} has no PostgreSQL server: {exception.Message}");
+            return (null, $"Couldn't get a PostgreSQL server from {options.Source}: {exception.Message}");
         }
     }
 

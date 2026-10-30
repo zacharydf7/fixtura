@@ -2,9 +2,11 @@
 
 ## A test was skipped
 
-The skip reason names the resource and why it's unavailable, such as "SQL Server not reachable at
-(localdb)\MSSQLLocalDB: ..." or "a SQL Server container (mcr.microsoft.com/mssql/server:2022-latest) has no SQL Server:
-...". Start the server, set the variable, or install Docker for a container source. In CI, set the `RequiredWhenSet` variable so the same problem fails the build.
+The skip reason names the resource, why it's unavailable and where the server came from, such as "SQL Server not
+reachable at (localdb)\MSSQLLocalDB: ... The server came from the FIXTURA_SQLSERVER variable, or LocalDB when it isn't
+set." or "Couldn't get a SQL Server from a SQL Server container (mcr.microsoft.com/mssql/server:2022-latest): ...". Start
+the server, set the variable it names, or install Docker for a container source. In CI, set the `RequiredWhenSet`
+variable so the same problem fails the build.
 
 ## The first test waits several seconds
 
@@ -20,7 +22,8 @@ a time with `dotnet test --max-parallel-test-modules 1`; it's often faster overa
 ## NothingMatchedException
 
 A typed swap, a DbContext swap or `Http.Fake<TClient>()` found nothing to change in the app. The service or client was
-probably renamed or removed. Update the swap, or remove it if the app no longer has the service.
+probably renamed or removed. Update the swap, or remove it if the app no longer has the service. The message lists
+every swap that matched nothing, so one run shows all that a rename broke.
 
 ## A list setting has the app's entries mixed in
 
@@ -30,8 +33,14 @@ command-line arguments are the only early channel. Read the list after `Build()`
 
 ## A request to a fake throws "has no response for"
 
-No response matches the request's method and path. Paths start with `/` and are matched exactly, including the query
-when the response's path has one. Add a response, or a catch-all with `Respond(status)`.
+No response matches the request's method and path. The message lists the method and path of each response the fake
+has, so a typo such as `/quote` against `/quotes` shows. Paths start with `/` and are matched exactly, including the
+query when the response's path has one. Add a response, or a catch-all with `Respond(status)`.
+
+## "is not provisioned yet"
+
+A resource's `Database(...)` was called directly in `Configure`, before the fixture provisioned the resource. Call it
+inside a lambda that runs when the host is built, such as the one given to `ReplaceDbContext` or `Settings(() => ...)`.
 
 ## The app returns 500 and the reason is unclear
 

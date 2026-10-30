@@ -31,7 +31,7 @@ public static class SqlServerContainer
         /// from <paramref name="image"/> when the variable isn't set or is blank.
         /// </summary>
         public static SqlServerSource EnvironmentVariableOrContainer(string name, string image = DefaultImage) =>
-            SqlServerSource.From($"{name} or a SQL Server container ({image})",
+            SqlServerSource.From($"the {name} variable, or a SQL Server container ({image}) when it isn't set",
                 async () =>
                 {
                     // A blank variable counts as unset: CI leaves a secret blank in a fork's pull request.

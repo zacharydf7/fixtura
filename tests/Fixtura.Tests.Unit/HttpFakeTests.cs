@@ -49,6 +49,29 @@ public class HttpFakeTests
     }
 
     [Fact]
+    public async Task SendAsync_ShouldListTheResponses_WhenNoResponseMatches()
+    {
+        HttpFake fake = new HttpFake("rates")
+            .Respond(HttpMethod.Get, "/quotes", HttpStatusCode.OK)
+            .Respond(HttpMethod.Post, "/orders", HttpStatusCode.Created)
+            .Respond(HttpMethod.Get, "/quotes", HttpStatusCode.NotFound);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(fake, HttpMethod.Get, "https://rates.test/quote"));
+
+        Assert.EndsWith("It answers GET /quotes, POST /orders; add one with Respond.", error.Message);
+    }
+
+    [Fact]
+    public async Task SendAsync_ShouldSayItHasNoResponses_WhenNoneWereSet()
+    {
+        var fake = new HttpFake("rates");
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => SendAsync(fake, HttpMethod.Get, "https://rates.test/quote"));
+
+        Assert.EndsWith("It has no responses; add one with Respond.", error.Message);
+    }
+
+    [Fact]
     public async Task Requests_ShouldReadTheBodyWithWebDefaults_WhenTheAppSentJson()
     {
         HttpFake fake = new HttpFake("tracking").Respond(HttpStatusCode.OK);

@@ -63,7 +63,7 @@ public class SqlContainerGateTests
 
         string? reason = await sql.ProvisionAsync("fixtura_00000000");
 
-        Assert.StartsWith("a SQL Server container (fixtura.invalid/no-such-image:1) has no SQL Server: ", reason);
+        Assert.StartsWith("Couldn't get a SQL Server from a SQL Server container (fixtura.invalid/no-such-image:1): ", reason);
     }
 
     // The image can't start, so a container started by mistake would fail instead of passing.

@@ -284,13 +284,26 @@ public sealed class TestHostBuilder
         web.ConfigureAppConfiguration((_, configuration) => ApplyLateSettings(settings, configuration));
         web.ConfigureTestServices(services =>
         {
-            foreach (Action<IServiceCollection> step in _serviceSteps)
+            // Every stale swap is reported at once, so a rename shows all the swaps it broke in one run.
+            List<Action<IServiceCollection>> steps = [.. _serviceSteps, Users.Apply, Http.Apply];
+            List<string> unmatched = [];
+            foreach (Action<IServiceCollection> step in steps)
             {
-                step(services);
+                try
+                {
+                    step(services);
+                }
+                catch (NothingMatchedException error)
+                {
+                    unmatched.AddRange(error.Calls);
+                }
             }
 
-            Users.Apply(services);
-            Http.Apply(services);
+            if (unmatched.Count > 0)
+            {
+                throw new NothingMatchedException(unmatched);
+            }
+
             if (_testOutputLevel is LogLevel level)
             {
                 TestOutputLoggerProvider.AddTo(services, level, sendDiagnosticMessage);

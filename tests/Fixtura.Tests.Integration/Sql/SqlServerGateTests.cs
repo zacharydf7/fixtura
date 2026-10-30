@@ -16,6 +16,7 @@ public class SqlServerGateTests
         string? reason = await sql.ProvisionAsync("fixtura_00000000");
 
         Assert.StartsWith("SQL Server not reachable at tcp:127.0.0.1,1", reason);
+        Assert.Matches(@"The server came from the FIXTURA_TEST_SERVER_\w+ variable, or LocalDB when it isn't set\.$", reason);
     }
 
     [Theory]
@@ -90,7 +91,7 @@ public class SqlServerGateTests
 
         string? reason = await sql.ProvisionAsync("fixtura_00000000");
 
-        Assert.Equal("the test's source has no SQL Server: Docker isn't running.", reason);
+        Assert.Equal("Couldn't get a SQL Server from the test's source: Docker isn't running.", reason);
     }
 
     [Fact]
@@ -106,7 +107,7 @@ public class SqlServerGateTests
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => sql.ProvisionAsync("fixtura_00000000"));
 
-        Assert.StartsWith("the test's source has no SQL Server: Docker isn't running.", error.Message);
+        Assert.StartsWith("Couldn't get a SQL Server from the test's source: Docker isn't running.", error.Message);
     }
 
     [Fact]

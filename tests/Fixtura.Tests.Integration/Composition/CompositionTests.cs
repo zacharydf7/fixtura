@@ -90,6 +90,29 @@ public sealed class RenamedServiceFixture : TestHost<Program>
     protected override void Configure(TestHostBuilder host) => host.Services.Remove<TestCardGateway>();
 }
 
+// Stale service swaps and typed clients, as one rename can leave behind.
+public sealed class SeveralRenamedFixture : TestHost<Program>
+{
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Services.Remove<TestCardGateway>().Replace<IPaymentGateway, TestCardGateway>(ServiceLifetime.Singleton);
+        host.Http.Fake<TestCardGateway>();
+        host.Http.Fake<CardGateway>();
+    }
+}
+
+public class SeveralNothingMatchedTests(SeveralRenamedFixture api) : IClassFixture<SeveralRenamedFixture>
+{
+    [Fact]
+    public void Services_ShouldReportEveryStaleSwap_WhenSeveralMatchNothing()
+    {
+        var error = Assert.ThrowsAny<Exception>(() => api.Services);
+
+        Assert.Equal("Remove<TestCardGateway>, Replace<IPaymentGateway>, Http.Fake<TestCardGateway>, Http.Fake<CardGateway> "
+            + "matched no registration in the app. Were the services renamed or removed?", error.GetBaseException().Message);
+    }
+}
+
 public class NothingMatchedTests(RenamedServiceFixture api) : IClassFixture<RenamedServiceFixture>
 {
     [Fact]

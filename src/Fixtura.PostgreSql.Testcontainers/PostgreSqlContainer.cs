@@ -31,7 +31,7 @@ public static class PostgreSqlContainer
         /// from <paramref name="image"/> when the variable isn't set or is blank.
         /// </summary>
         public static PostgreSqlSource EnvironmentVariableOrContainer(string name, string image = DefaultImage) =>
-            PostgreSqlSource.From($"{name} or a PostgreSQL container ({image})",
+            PostgreSqlSource.From($"the {name} variable, or a PostgreSQL container ({image}) when it isn't set",
                 async () =>
                 {
                     // A blank variable counts as unset: CI leaves a secret blank in a fork's pull request.

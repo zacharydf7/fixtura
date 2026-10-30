@@ -17,7 +17,9 @@ public sealed class SqliteResource : ITestResource
     /// </summary>
     public string Database(string name)
     {
-        string prefix = _prefix ?? throw new InvalidOperationException("The SQLite resource is not provisioned yet.");
+        string prefix = _prefix ?? throw new InvalidOperationException("The SQLite resource is not provisioned yet. Call "
+            + "Database(...) inside a lambda that runs when the host is built, such as the one given to ReplaceDbContext or "
+            + "Settings(() => ...), not in Configure itself.");
         string connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = $"{prefix}_{name}",

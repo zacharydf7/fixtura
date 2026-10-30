@@ -202,6 +202,7 @@ public class PostgreSqlGateTests
         string? reason = await postgres.ProvisionAsync("fixtura_00000000");
 
         Assert.StartsWith("PostgreSQL not reachable at 127.0.0.1:1", reason);
+        Assert.EndsWith("The server came from the test's server.", reason);
     }
 
     [Fact]
@@ -223,7 +224,7 @@ public class PostgreSqlGateTests
 
         string? reason = await postgres.ProvisionAsync("fixtura_00000000");
 
-        Assert.Equal($"No PostgreSQL server is configured in {name}.", reason);
+        Assert.Equal($"No PostgreSQL server is configured in the {name} variable.", reason);
     }
 
     [Fact]
@@ -263,7 +264,7 @@ public class PostgreSqlContainerGateTests
 
         string? reason = await postgres.ProvisionAsync("fixtura_00000000");
 
-        Assert.StartsWith($"a PostgreSQL container ({MissingImage}) has no PostgreSQL server: ", reason);
+        Assert.StartsWith($"Couldn't get a PostgreSQL server from a PostgreSQL container ({MissingImage}): ", reason);
     }
 
     [Fact]

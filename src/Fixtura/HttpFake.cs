@@ -68,17 +68,21 @@ public sealed class HttpFake
     {
         string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Route? route;
+        List<string> answered;
         lock (_gate)
         {
             _requests.Add(new FakeHttpRequest(request.Method, request.RequestUri!, Headers(request), body));
             route = _routes.LastOrDefault(candidate => candidate.Method is not null && candidate.Matches(request))
                 ?? _routes.LastOrDefault(candidate => candidate.Method is null);
+            answered = route is null ? _routes.Select(candidate => $"{candidate.Method} {candidate.Path}").Distinct().ToList() : [];
         }
 
+        // Without a catch-all every response has a method and path, and listing them shows a typo such as /quote.
         if (route is null)
         {
-            throw new InvalidOperationException(
-                $"The fake for HTTP client '{ClientName}' has no response for {request.Method} {request.RequestUri}. Add one with Respond.");
+            string responses = answered.Count == 0 ? "It has no responses" : $"It answers {string.Join(", ", answered)}";
+            throw new InvalidOperationException($"The fake for HTTP client '{ClientName}' has no response for {request.Method} "
+                + $"{request.RequestUri}. {responses}; add one with Respond.");
         }
 
         HttpResponseMessage response = route.Respond(request);

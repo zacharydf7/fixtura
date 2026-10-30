@@ -14,7 +14,7 @@ public sealed class PostgreSqlSource
 
     /// <summary>The connection string in the environment variable; no server when it isn't set or is blank.</summary>
     public static PostgreSqlSource EnvironmentVariable(string name) =>
-        From(name, () => Task.FromResult(Variable(name)));
+        From($"the {name} variable", () => Task.FromResult(Variable(name)));
 
     /// <summary>
     /// A server your own code provides, such as one it starts. Return a connection string that names a server, or null when
