@@ -1,2 +1,3 @@
 #nullable enable
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
+Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!

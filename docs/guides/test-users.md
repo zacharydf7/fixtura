@@ -11,7 +11,7 @@ still run. Choose how with `host.Users.SignIn`:
 | `UserSignIn` | How |
 | --- | --- |
 | `AppJwtBearer` (default) | A bearer token signed with the app's own `JwtBearerOptions` key, issuer and audience. Apps that trust an `Authority` get a test signing key, so no metadata request leaves the process. |
-| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. |
+| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. Clients talk to the test server over HTTPS, so a Secure cookie keeps working after the app renews it. |
 
 Claim types come from the app's own options, so the principal reads the same whether or not the app maps inbound
 claims.

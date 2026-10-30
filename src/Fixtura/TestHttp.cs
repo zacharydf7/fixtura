@@ -18,8 +18,11 @@ public sealed class TestHttp
     {
     }
 
-    /// <summary>What happens to requests through clients that have no fake; <see cref="UnfakedHttpClients.Allow"/> unless set.</summary>
-    public UnfakedHttpClients Unfaked { get; set; } = UnfakedHttpClients.Allow;
+    /// <summary>
+    /// What happens to requests through clients that have no fake; <see cref="UnfakedHttpClients.Block"/> unless set, so a
+    /// fake under the wrong name fails instead of letting the request reach the network.
+    /// </summary>
+    public UnfakedHttpClients Unfaked { get; set; } = UnfakedHttpClients.Block;
 
     /// <summary>
     /// The fake for the named client, as registered with <c>AddHttpClient(name)</c>. Asking twice returns the same fake; in
@@ -112,8 +115,9 @@ public sealed class TestHttp
         else if (Unfaked == UnfakedHttpClients.Block)
         {
             builder.PrimaryHandler = new FakeHandler((request, _) => throw new InvalidOperationException(
-                $"HTTP client '{name}' has no fake and host.Http.Unfaked is Block, so {request.Method} {request.RequestUri} "
-                + $"was not sent. Fake it with host.Http.Fake(\"{name}\")."));
+                $"HTTP client '{name}' has no fake, so {request.Method} {request.RequestUri} was not sent. Fake it with "
+                + $"host.Http.Fake(\"{name}\"), or let unfaked clients reach the network with host.Http.Unfaked = "
+                + "UnfakedHttpClients.Allow."));
         }
     }
 

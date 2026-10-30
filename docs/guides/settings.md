@@ -5,7 +5,8 @@
 - `Settings(object)` takes an object shaped like `appsettings.json`. Enums are written by name.
 - `Settings(json)` takes JSON shaped the same way; comments and trailing commas are allowed.
 - `Options<TOptions>(...)` changes the bound options after the app's own configuration and post-configuration, which
-  suits typed lists.
+  suits typed lists. It reaches every instance, named or not, such as each authentication scheme's or each HTTP
+  client's; `Options<TOptions>(name, ...)` changes only the one with that name.
 - Later calls win, key by key.
 
 ## When the app reads them

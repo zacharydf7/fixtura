@@ -1,11 +1,37 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 
 namespace Fixtura.Tests.Integration.Users;
 
 public sealed class CookieFixture : TestHost<CookieApp.Program>
 {
     protected override void Configure(TestHostBuilder host) => host.Users.SignIn = UserSignIn.AppCookie;
+}
+
+// The app renews the backdated test cookie on the first request, and a renewed Secure cookie is only sent over HTTPS.
+public sealed class SecureCookieFixture : TestHost<CookieApp.Program>
+{
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Users.SignIn = UserSignIn.AppCookie;
+        host.Options<CookieAuthenticationOptions>(options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always);
+    }
+}
+
+public class SecureCookieSignInTests(SecureCookieFixture api) : IClassFixture<SecureCookieFixture>
+{
+    [Fact]
+    public async Task CreateClientAsync_ShouldStaySignedIn_WhenTheAppRenewsASecureCookie()
+    {
+        HttpClient client = await api.CreateClientAsync(TestUser.Named("ann").WithRoles("Auditor"));
+        await client.GetAsync("/me", TestContext.Current.CancellationToken);
+
+        HttpResponseMessage second = await client.GetAsync("/me", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+    }
 }
 
 public class CookieSignInTests(CookieFixture api) : IClassFixture<CookieFixture>

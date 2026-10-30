@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Http;
 using SampleApp;
 
 namespace Fixtura.Tests.Integration.Http;
@@ -17,9 +18,47 @@ public sealed class PartnersFixture : TestHost<Program>
     }
 }
 
-public sealed class BlockedPartnersFixture : TestHost<Program>
+// No HTTP setup at all, so the default applies to every client.
+public sealed class UnfakedPartnersFixture : TestHost<Program>
 {
-    protected override void Configure(TestHostBuilder host) => host.Http.Unfaked = UnfakedHttpClients.Block;
+    protected override void Configure(TestHostBuilder host)
+    {
+    }
+}
+
+// The rates client gets a primary handler of its own, standing in for the network, so Allow keeps it in place.
+public sealed class AllowedPartnersFixture : TestHost<Program>
+{
+    protected override void Configure(TestHostBuilder host)
+    {
+        host.Http.Unfaked = UnfakedHttpClients.Allow;
+        host.Options<HttpClientFactoryOptions>("rates", options =>
+            options.HttpMessageHandlerBuilderActions.Add(builder => builder.PrimaryHandler = new NetworkStandIn()));
+    }
+}
+
+public sealed class NetworkStandIn : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new Rate("EUR", 9.9m)) });
+}
+
+// A header added through all of the HTTP clients' options, and one through the rates client's own.
+public sealed class ClientOptionsFixture : TestHost<Program>
+{
+    public HttpFake Rates { get; private set; } = null!;
+
+    public HttpFake Tracking { get; private set; } = null!;
+
+    protected override void Configure(TestHostBuilder host)
+    {
+        Rates = host.Http.Fake("rates").Respond(HttpStatusCode.OK, new Rate("EUR", 1.1m));
+        Tracking = host.Http.Fake<TrackingClient>().Respond(HttpStatusCode.OK, new TrackResponse("Delivered"));
+        host.Options<HttpClientFactoryOptions>(options =>
+            options.HttpClientActions.Add(client => client.DefaultRequestHeaders.Add("X-All", "yes")));
+        host.Options<HttpClientFactoryOptions>("rates", options =>
+            options.HttpClientActions.Add(client => client.DefaultRequestHeaders.Add("X-Rates", "yes")));
+    }
 }
 
 public sealed class UnregisteredClientFixture : TestHost<Program>
@@ -96,11 +135,11 @@ public class HttpFakeResetTests(PartnersFixture api) : IClassFixture<PartnersFix
 
 public class SharedHttpFakeTests(PartnersFixture api) : IClassFixture<PartnersFixture>
 {
-    // Block stops only clients without a fake, so the fixture's rates fake still answers through the override.
+    // Clients without a fake are blocked, so only the fixture's shared rates fake can answer through the override.
     [Fact]
     public async Task WithOverrides_ShouldShareTheFixturesFake_WhenTheOverrideDoesNotFakeTheClientAgain()
     {
-        await using TestHost<Program> overridden = api.WithOverrides(host => host.Http.Unfaked = UnfakedHttpClients.Block);
+        await using TestHost<Program> overridden = api.WithOverrides(_ => { });
         HttpClient client = await overridden.CreateClientAsync();
 
         HttpResponseMessage response = await client.GetAsync("/rates/EUR", TestContext.Current.CancellationToken);
@@ -109,11 +148,11 @@ public class SharedHttpFakeTests(PartnersFixture api) : IClassFixture<PartnersFi
     }
 }
 
-public class BlockedHttpTests(BlockedPartnersFixture api) : IClassFixture<BlockedPartnersFixture>
+public class UnfakedHttpTests(UnfakedPartnersFixture api) : IClassFixture<UnfakedPartnersFixture>
 {
     // The app runs in Development, so its exception page answers with the error.
     [Fact]
-    public async Task Unfaked_ShouldStopTheRequestAndNameTheFix_WhenSetToBlock()
+    public async Task Unfaked_ShouldStopTheRequestAndNameTheFix_WhenNothingIsSet()
     {
         HttpClient client = await api.CreateClientAsync();
 
@@ -122,6 +161,36 @@ public class BlockedHttpTests(BlockedPartnersFixture api) : IClassFixture<Blocke
         string page = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Contains("Fake it with host.Http.Fake(\"rates\")", page);
+    }
+}
+
+public class AllowedHttpTests(AllowedPartnersFixture api) : IClassFixture<AllowedPartnersFixture>
+{
+    [Fact]
+    public async Task Unfaked_ShouldLetTheRequestThrough_WhenSetToAllow()
+    {
+        HttpClient client = await api.CreateClientAsync();
+
+        Rate? rate = await client.GetFromJsonAsync<Rate>("/rates/EUR", TestContext.Current.CancellationToken);
+
+        Assert.Equal(9.9m, rate?.Value);
+    }
+}
+
+public class ClientOptionsTests(ClientOptionsFixture api) : IClassFixture<ClientOptionsFixture>
+{
+    [Fact]
+    public async Task Options_ShouldReachNamedOptions_WhenGivenForAllNamesOrForOne()
+    {
+        HttpClient client = await api.CreateClientAsync();
+
+        await client.GetAsync("/rates/EUR", TestContext.Current.CancellationToken);
+        await client.PostAsync("/parcels/123/track", null, TestContext.Current.CancellationToken);
+
+        IReadOnlyDictionary<string, string> rates = api.Rates.Requests[^1].Headers;
+        IReadOnlyDictionary<string, string> tracking = api.Tracking.Requests[^1].Headers;
+        Assert.Equal(("yes", "yes"), (rates["X-All"], rates["X-Rates"]));
+        Assert.Equal(("yes", false), (tracking["X-All"], tracking.ContainsKey("X-Rates")));
     }
 }
 

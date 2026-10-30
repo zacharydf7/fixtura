@@ -35,8 +35,11 @@ case-insensitive name) and body. `Json<T>()` reads the body with the web default
 
 ## Unfaked clients
 
-`host.Http.Unfaked = UnfakedHttpClients.Block` makes requests through any client without a fake throw, naming the
-client and how to fake it. The default, `Allow`, lets them reach the network.
+Requests through a client without a fake throw, naming the client and how to fake it. So a forgotten fake, or one
+under a name the app doesn't use, such as a Refit client's generated name, fails instead of reaching the network.
+Register a Refit client with `AddRefitClient<TApi>(httpClientName: "name")` and fake it with `Fake("name")`, or copy
+the name from the error.
+`host.Http.Unfaked = UnfakedHttpClients.Allow` lets unfaked clients reach the network, as in production.
 
 ## Resets and overrides
 

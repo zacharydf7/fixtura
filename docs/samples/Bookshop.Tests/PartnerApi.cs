@@ -12,7 +12,6 @@ public sealed class ShippingFixture : TestHost<Program>
     {
         host.Use<InMemoryShop>().Use<QuietBackground>();
         Shipping = host.Http.Fake<ShippingClient>().Respond(HttpMethod.Post, "/quotes", HttpStatusCode.OK, new Quote(4.99m));
-        host.Http.Unfaked = UnfakedHttpClients.Block;
         host.LogToTestOutput();
     }
 }

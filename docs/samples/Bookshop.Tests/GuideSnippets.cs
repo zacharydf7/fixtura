@@ -102,7 +102,6 @@ internal static class GuideSnippets
             .Respond(HttpMethod.Get, "/today/EUR", HttpStatusCode.OK, new { Value = 1.1 })
             .Respond(HttpMethod.Get, "/today?currency=USD", HttpStatusCode.OK, new { Value = 1.0 })
             .Respond(request => new HttpResponseMessage(HttpStatusCode.NotFound));
-        host.Http.Unfaked = UnfakedHttpClients.Block;
         // </http-fakes>
 
         // <recorded-requests>

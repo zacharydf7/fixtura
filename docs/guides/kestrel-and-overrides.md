@@ -6,7 +6,8 @@
 
 `ServerKind.Kestrel` runs the app on Kestrel on a free port instead of the in-memory test server. `BaseAddress` is
 where a browser, such as one driven by Playwright, or another process reaches it. Signed-in clients from
-`CreateClientAsync` work as before.
+`CreateClientAsync` work as before, except that Kestrel serves plain HTTP: an app whose cookie is Secure stops
+receiving it once it renews the cookie.
 
 Requests over Kestrel arrive from a socket, not from a test, so their logs become diagnostic messages; see
 [The app's logs](logs.md).

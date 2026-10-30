@@ -125,10 +125,14 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             if (signedIn?.Cookie is not null)
             {
                 // In a cookie container, unlike a header, the app's own responses can renew or clear the cookie. The sign-in
-                // cookie holds the whole ticket unsplit, so the container must accept any size.
+                // cookie holds the whole ticket unsplit, so the container must accept any size. TestServer accepts any
+                // scheme, and over HTTPS a renewed Secure cookie keeps being sent.
+                Uri address = _builder.Server == ServerKind.TestServer
+                    ? new Uri("https://localhost")
+                    : factory.ClientOptions.BaseAddress;
                 var cookies = new CookieContainer { MaxCookieSize = int.MaxValue };
-                cookies.Add(factory.ClientOptions.BaseAddress, signedIn.Cookie);
-                return factory.CreateDefaultClient(new RedirectHandler(), new CookieContainerHandler(cookies));
+                cookies.Add(address, signedIn.Cookie);
+                return factory.CreateDefaultClient(address, new RedirectHandler(), new CookieContainerHandler(cookies));
             }
 
             HttpClient client = factory.CreateClient();

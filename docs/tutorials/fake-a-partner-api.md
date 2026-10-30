@@ -12,8 +12,7 @@ fakes the partner in-process, checks what Bookshop sent it, and tests what happe
   client, such as retries or auth headers, still run.
 - `Respond(method, path, status, json)` answers one route. The fixture keeps the fake in a property, so tests can read
   what the app sent.
-- `Unfaked = UnfakedHttpClients.Block` makes any other client throw instead of reaching the network, so a test can't
-  depend on a real service by accident.
+- Any other client throws instead of reaching the network, so a test can't depend on a real service by accident.
 - `LogToTestOutput()` writes the app's logs to the output of the test that caused them. When a test fails, xUnit shows
   them with the failure.
 

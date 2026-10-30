@@ -103,11 +103,19 @@ public sealed class TestHostBuilder
     }
 
     /// <summary>
-    /// Changes the app's options after it has bound and post-configured them, so a list can be replaced whole.
+    /// Changes every instance of the app's options, named or not, after the app has bound and post-configured them, so a
+    /// list can be replaced whole. Named options include each authentication scheme's and each HTTP client's.
     /// </summary>
     public TestHostBuilder Options<TOptions>(Action<TOptions> configure) where TOptions : class
     {
-        _serviceSteps.Add(services => services.PostConfigure(configure));
+        _serviceSteps.Add(services => services.PostConfigureAll(configure));
+        return this;
+    }
+
+    /// <summary>Changes one named instance of the app's options, such as one authentication scheme's.</summary>
+    public TestHostBuilder Options<TOptions>(string name, Action<TOptions> configure) where TOptions : class
+    {
+        _serviceSteps.Add(services => services.PostConfigure(name, configure));
         return this;
     }
 

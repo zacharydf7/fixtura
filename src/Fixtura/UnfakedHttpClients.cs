@@ -6,6 +6,6 @@ public enum UnfakedHttpClients
     /// <summary>It reaches the network, as in production.</summary>
     Allow,
 
-    /// <summary>It throws, so a test can't depend on a real service by accident.</summary>
+    /// <summary>It throws, naming the client, so a test can't depend on a real service by accident. The default.</summary>
     Block
 }

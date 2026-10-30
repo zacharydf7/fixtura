@@ -136,7 +136,9 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
 - An array in the overlay replaces the app's array whole, so a 3-entry list in appsettings.json becomes the 1 entry you
   set. A later `Settings` call replaces an earlier call's array the same way. Before `Build()`, arrays still merge by
   index with the app's, because the only early channel is command-line arguments; read lists after `Build()`.
-- `Options<TOptions>` changes the bound options after the app's own post-configuration, which suits typed lists.
+- `Options<TOptions>` changes the bound options after the app's own post-configuration, which suits typed lists. It
+  reaches every instance, named or not, such as each authentication scheme's; `Options<TOptions>(name, ...)` changes
+  one.
 
 ## Test users
 
@@ -151,7 +153,7 @@ run. Choose how with `host.Users.SignIn`:
 | `UserSignIn` | How |
 | --- | --- |
 | `AppJwtBearer` (default) | A bearer token signed with the app's own `JwtBearerOptions` key, issuer and audience. Apps that trust an Authority get a test signing key, so no metadata request leaves the process. |
-| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. |
+| `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. Clients talk to the test server over HTTPS, so a Secure cookie keeps working after the app renews it. |
 
 Apps that check each request against their user store need the user to exist there. Register a seeder:
 
@@ -180,7 +182,6 @@ public sealed class ApiFixture : TestHost<Program>
     {
         Rates = host.Http.Fake("rates").Respond(HttpMethod.Get, "/today/EUR", HttpStatusCode.OK, new { Value = 1.1 });
         host.Http.Fake<TrackingClient>().Respond(HttpStatusCode.OK, new { Status = "Delivered" });
-        host.Http.Unfaked = UnfakedHttpClients.Block;
     }
 }
 
@@ -194,8 +195,9 @@ Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
 - `Respond(method, path, status, json)` answers one route, and `Respond(status, json)` or `Respond(request => ...)`
   answers everything else. The latest matching response wins. A request nothing answers throws, naming the request.
 - `Requests` lists what the app sent: method, URI, headers and body, with `Json<T>()` to read the body.
-- `Unfaked = UnfakedHttpClients.Block` makes requests through clients without a fake throw instead of reaching the
-  network. Clients the app creates with `new HttpClient()` can't be faked.
+- Requests through clients without a fake throw, naming the client, so a forgotten fake or one under the wrong name
+  can't reach the network. `host.Http.Unfaked = UnfakedHttpClients.Allow` lets them through. Clients the app creates
+  with `new HttpClient()` can't be faked.
 - `ResetDataAsync` clears the recorded requests and brings back the responses set in `Configure`, undoing ones a test
   set. In `WithOverrides`, faking a client again replaces the fixture's fake for that host only.
 
