@@ -49,7 +49,7 @@ public sealed class TestUsers
         services.AddSingleton(_additions);
         if (SignIn == UserSignIn.AppJwtBearer)
         {
-            services.PostConfigureAll<JwtBearerOptions>(UseTestKeyForAuthority);
+            services.PostConfigureAll<JwtBearerOptions>(TrustTestKeyWhenAppCannotSign);
         }
     }
 
@@ -97,17 +97,56 @@ public sealed class TestUsers
     {
         JwtBearerOptions options = services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get(scheme);
         TokenValidationParameters parameters = options.TokenValidationParameters;
-        SecurityKey key = parameters.IssuerSigningKey ?? parameters.IssuerSigningKeys?.FirstOrDefault() ?? _authorityKey;
+        SecurityKey key = AppKeys(parameters).FirstOrDefault(CanSign) ?? _authorityKey;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = parameters.ValidIssuer ?? parameters.ValidIssuers?.FirstOrDefault() ?? options.Authority,
             Audience = parameters.ValidAudience ?? parameters.ValidAudiences?.FirstOrDefault() ?? options.Audience,
             Subject = new ClaimsIdentity(seeded ?? DefaultClaims(user, parameters.NameClaimType, parameters.RoleClaimType)),
             Expires = DateTime.UtcNow.AddHours(1),
-            SigningCredentials = new SigningCredentials(key,
-                key is SymmetricSecurityKey ? SecurityAlgorithms.HmacSha256 : SecurityAlgorithms.RsaSha256)
+            SigningCredentials = new SigningCredentials(key, Algorithm(key))
         });
     }
+
+    private static List<SecurityKey> AppKeys(TokenValidationParameters parameters) =>
+        [.. new[] { parameters.IssuerSigningKey }.OfType<SecurityKey>(), .. parameters.IssuerSigningKeys ?? []];
+
+    // An app that pins its identity provider's public key, or a certificate without its private key, can't sign. Given
+    // an RSA or ECDsa object, IdentityModel can't tell whether it holds a private key, so a signature decides.
+    private static bool CanSign(SecurityKey key) => key switch
+    {
+        SymmetricSecurityKey => true,
+        RsaSecurityKey { Rsa: { } rsa } =>
+            Signs(() => rsa.SignHash(new byte[32], HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)),
+        ECDsaSecurityKey { ECDsa: var ecdsa } => Signs(() => ecdsa.SignHash(new byte[32])),
+        AsymmetricSecurityKey asymmetric => asymmetric.PrivateKeyStatus == PrivateKeyStatus.Exists,
+        _ => false
+    };
+
+    private static bool Signs(Action sign)
+    {
+        try
+        {
+            sign();
+            return true;
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+    }
+
+    private static string Algorithm(SecurityKey key) => key switch
+    {
+        SymmetricSecurityKey => SecurityAlgorithms.HmacSha256,
+        ECDsaSecurityKey => key.KeySize switch
+        {
+            384 => SecurityAlgorithms.EcdsaSha384,
+            521 => SecurityAlgorithms.EcdsaSha512,
+            _ => SecurityAlgorithms.EcdsaSha256
+        },
+        _ => SecurityAlgorithms.RsaSha256
+    };
 
     private static Cookie CreateCookie(IServiceProvider services, string scheme, TestUser user, IReadOnlyList<Claim>? seeded)
     {
@@ -130,18 +169,28 @@ public sealed class TestUsers
     private static List<Claim> DefaultClaims(TestUser user, string nameType, string roleType) =>
         [new(nameType, user.Name), .. user.Roles.Select(role => new Claim(roleType, role)), .. user.Claims];
 
-    // Apps that trust an Authority hold no private key: give them a static configuration with a test key instead.
-    private void UseTestKeyForAuthority(JwtBearerOptions options)
+    // Apps that trust an Authority, or pin only public keys, hold no key a test can sign with: they trust a test key too.
+    private void TrustTestKeyWhenAppCannotSign(JwtBearerOptions options)
     {
         TokenValidationParameters parameters = options.TokenValidationParameters;
-        if (parameters.IssuerSigningKey is not null || parameters.IssuerSigningKeys?.Any() == true)
+        List<SecurityKey> keys = AppKeys(parameters);
+        if (keys.Any(CanSign))
         {
             return;
         }
 
-        var configuration = new OpenIdConnectConfiguration { Issuer = parameters.ValidIssuer ?? options.Authority };
-        configuration.SigningKeys.Add(_authorityKey);
-        options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+        if (keys.Count > 0)
+        {
+            parameters.IssuerSigningKeys = [.. parameters.IssuerSigningKeys ?? [], _authorityKey];
+        }
+
+        // The app's configuration manager would fetch the Authority's metadata, so a static one replaces it.
+        if (keys.Count == 0 || options.Authority is not null || options.MetadataAddress is not null)
+        {
+            var configuration = new OpenIdConnectConfiguration { Issuer = parameters.ValidIssuer ?? options.Authority };
+            configuration.SigningKeys.Add(_authorityKey);
+            options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+        }
     }
 }
 

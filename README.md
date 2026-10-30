@@ -154,7 +154,7 @@ run. Choose how with `host.Users.SignIn`:
 
 | `UserSignIn` | How |
 | --- | --- |
-| `AppJwtBearer` (default) | A bearer token signed with the app's own `JwtBearerOptions` key, issuer and audience. Apps that trust an Authority get a test signing key, so no metadata request leaves the process. |
+| `AppJwtBearer` (default) | A bearer token signed with the app's own `JwtBearerOptions` key, issuer and audience, with the algorithm its key type needs (HMAC, RSA or ECDsa). Apps that trust an Authority, or pin only public keys, trust a test signing key as well, so no metadata request leaves the process. |
 | `AppCookie` | An authentication cookie protected with the app's own cookie options, the one its login page would issue. The app's security-stamp check runs on the first request, and its sign-out works. Clients talk to the test server over HTTPS, so a Secure cookie keeps working after the app renews it. |
 
 Apps that check each request against their user store need the user to exist there. Register a seeder:

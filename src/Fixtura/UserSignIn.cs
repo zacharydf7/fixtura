@@ -4,8 +4,8 @@ namespace Fixtura;
 public enum UserSignIn
 {
     /// <summary>
-    /// A bearer token signed with the app's own key, issuer and audience, or with a test key for apps that trust an
-    /// Authority.
+    /// A bearer token signed with the app's own key, issuer and audience, or with a test key the app trusts too when it
+    /// has no key a test can sign with: it trusts an Authority, or pins only public keys.
     /// </summary>
     AppJwtBearer,
 
