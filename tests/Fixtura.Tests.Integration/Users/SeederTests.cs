@@ -13,8 +13,9 @@ public sealed class SeedLog
 // Issues the claims an app's own sign-in would, which here differ from what the test user asked for.
 public sealed class RenamingSeeder(SeedLog log) : ITestUserSeeder
 {
-    public Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services)
+    public Task<IReadOnlyList<Claim>> SeedAsync(TestUserSeedContext context)
     {
+        TestUser user = context.User;
         Interlocked.Increment(ref log.Runs);
         IReadOnlyList<Claim> claims = [new(ClaimTypes.Name, "seeded " + user.Name), .. user.Roles.Select(role => new Claim(ClaimTypes.Role, role))];
         return Task.FromResult(claims);

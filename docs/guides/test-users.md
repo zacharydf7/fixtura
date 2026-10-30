@@ -69,7 +69,8 @@ keyed by something other than a string take their id from `TestUser.Id` there to
 
 ## Any other store
 
-Implement `ITestUserSeeder` and return the claims the app's own sign-in would issue:
+Implement `ITestUserSeeder` and return the claims the app's own sign-in would issue. Its `TestUserSeedContext` carries
+the user, the app's services and a cancellation token:
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#custom-seeder)]
 

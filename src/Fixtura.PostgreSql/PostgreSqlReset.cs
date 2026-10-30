@@ -27,22 +27,23 @@ internal static class PostgreSqlReset
         """;
 
     // Returns the kept names this database has, so the caller can tell which names match nothing in any database.
-    public static async Task<List<string>> ResetAsync(string connectionString, IReadOnlyList<string> keep)
+    public static async Task<List<string>> ResetAsync(string connectionString, IReadOnlyList<string> keep,
+        CancellationToken cancellationToken)
     {
         await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
         var tables = new List<(uint Id, string Schema, string Name, bool IsMigrationsHistory)>();
         var defaults = new List<(string Sequence, uint Table)>();
         await using (var read = new NpgsqlCommand(ReadSchema, connection))
-        await using (NpgsqlDataReader reader = await read.ExecuteReaderAsync())
+        await using (NpgsqlDataReader reader = await read.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 tables.Add((reader.GetFieldValue<uint>(0), reader.GetString(1), reader.GetString(2), reader.GetBoolean(3)));
             }
 
-            await reader.NextResultAsync();
-            while (await reader.ReadAsync())
+            await reader.NextResultAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
             {
                 defaults.Add(($"{Quote(reader.GetString(0))}.{Quote(reader.GetString(1))}", reader.GetFieldValue<uint>(2)));
             }
@@ -72,7 +73,7 @@ internal static class PostgreSqlReset
         string truncate = "TRUNCATE TABLE "
             + string.Join(", ", cleared.Select(table => $"{Quote(table.Schema)}.{Quote(table.Name)}")) + " RESTART IDENTITY;";
         await using var command = new NpgsqlCommand(string.Join(Environment.NewLine, [truncate, .. restarted]), connection);
-        await command.ExecuteNonQueryAsync();
+        await command.ExecuteNonQueryAsync(cancellationToken);
         return found;
     }
 

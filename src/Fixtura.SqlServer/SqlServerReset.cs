@@ -32,12 +32,13 @@ internal static class SqlServerReset
         """;
 
     // Returns the kept names this database has, so the caller can tell which names match nothing in any database.
-    public static async Task<List<string>> ResetAsync(string connectionString, IReadOnlyList<string> keep)
+    public static async Task<List<string>> ResetAsync(string connectionString, IReadOnlyList<string> keep,
+        CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
         (List<Table> tables, List<ForeignKey> foreignKeys, List<Trigger> triggers, List<SequenceDefault> defaults) =
-            await ReadSchemaAsync(connection);
+            await ReadSchemaAsync(connection, cancellationToken);
         List<string> found = keep.Where(name => tables.Any(table => Names(name, table.Schema, table.Name))).ToList();
 
         // A name that also matches a table, such as dbo.Prices next to its history table history.Prices, means the table.
@@ -68,20 +69,20 @@ internal static class SqlServerReset
         }
 
         await using var command = new SqlCommand(BuildScript(cleared, restarted, foreignKeys, triggers), connection);
-        await command.ExecuteNonQueryAsync();
+        await command.ExecuteNonQueryAsync(cancellationToken);
         return found;
     }
 
     private static async Task<(List<Table>, List<ForeignKey>, List<Trigger>, List<SequenceDefault>)> ReadSchemaAsync(
-        SqlConnection connection)
+        SqlConnection connection, CancellationToken cancellationToken)
     {
         var tables = new List<Table>();
         var foreignKeys = new List<ForeignKey>();
         var triggers = new List<Trigger>();
         var defaults = new List<SequenceDefault>();
         await using var command = new SqlCommand(ListTables, connection);
-        await using SqlDataReader reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             tables.Add(new Table(reader.GetInt32(0), reader.GetString(1), reader.GetString(2),
                 reader.IsDBNull(3) ? null : reader.GetInt64(3), reader.IsDBNull(4) ? null : reader.GetInt64(4), reader.GetBoolean(5),
@@ -89,20 +90,20 @@ internal static class SqlServerReset
                 reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetBoolean(9)));
         }
 
-        await reader.NextResultAsync();
-        while (await reader.ReadAsync())
+        await reader.NextResultAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             foreignKeys.Add(new ForeignKey(reader.GetString(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3)));
         }
 
-        await reader.NextResultAsync();
-        while (await reader.ReadAsync())
+        await reader.NextResultAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             triggers.Add(new Trigger(reader.GetInt32(0), reader.GetString(1)));
         }
 
-        await reader.NextResultAsync();
-        while (await reader.ReadAsync())
+        await reader.NextResultAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             defaults.Add(new SequenceDefault(reader.GetString(0), reader.GetString(1), reader.GetInt32(2)));
         }

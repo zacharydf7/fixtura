@@ -8,5 +8,5 @@ namespace Fixtura;
 /// </summary>
 public interface ITestUserSeeder
 {
-    Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services);
+    Task<IReadOnlyList<Claim>> SeedAsync(TestUserSeedContext context);
 }

@@ -190,8 +190,8 @@ internal static class GuideSnippets
         // <custom-source>
         var options = new SqlServerOptions
         {
-            Source = SqlServerSource.From("the shared test server", async () =>
-                await File.ReadAllTextAsync("test-server.txt")),
+            Source = SqlServerSource.From("the shared test server", async cancellationToken =>
+                await File.ReadAllTextAsync("test-server.txt", cancellationToken)),
             RequiredWhenSet = "CI"
         };
         // </custom-source>
@@ -224,9 +224,10 @@ internal static class GuideSnippets
 // <custom-seeder>
 public sealed class DirectorySeeder : ITestUserSeeder
 {
-    public Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services)
+    public Task<IReadOnlyList<Claim>> SeedAsync(TestUserSeedContext context)
     {
-        var directory = services.GetRequiredService<StaffDirectory>();
+        TestUser user = context.User;
+        var directory = context.Services.GetRequiredService<StaffDirectory>();
         string id = directory.AddOrUpdate(user.Name, user.Roles);
         IReadOnlyList<Claim> claims =
             [new(ClaimTypes.NameIdentifier, id), new(ClaimTypes.Name, user.Name), .. user.Roles.Select(role => new Claim(ClaimTypes.Role, role))];
@@ -240,22 +241,22 @@ public sealed class QueueResource : ITestResource
 {
     private string? _queue;
 
-    public async Task<string?> ProvisionAsync(string namePrefix)
+    public async Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
-        if (!await MessageBroker.IsReachableAsync())
+        if (!await MessageBroker.IsReachableAsync(context.CancellationToken))
         {
-            return "No message broker is running on localhost.";
+            return TestResourceStatus.Unavailable("No message broker is running on localhost.");
         }
 
-        _queue = await MessageBroker.CreateQueueAsync($"{namePrefix}_orders");
-        return null;
+        _queue = await MessageBroker.CreateQueueAsync($"{context.NamePrefix}_orders", context.CancellationToken);
+        return TestResourceStatus.Ready;
     }
 
-    public async Task ResetAsync()
+    public async Task ResetAsync(CancellationToken cancellationToken)
     {
         if (_queue is not null)
         {
-            await MessageBroker.PurgeAsync(_queue);
+            await MessageBroker.PurgeAsync(_queue, cancellationToken);
         }
     }
 
@@ -302,11 +303,11 @@ public sealed class StaffDirectory
 
 public static class MessageBroker
 {
-    public static Task<bool> IsReachableAsync() => Task.FromResult(false);
+    public static Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(false);
 
-    public static Task<string> CreateQueueAsync(string name) => Task.FromResult(name);
+    public static Task<string> CreateQueueAsync(string name, CancellationToken cancellationToken) => Task.FromResult(name);
 
-    public static Task PurgeAsync(string queue) => Task.CompletedTask;
+    public static Task PurgeAsync(string queue, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public static Task DeleteQueueAsync(string queue) => Task.CompletedTask;
 }

@@ -61,9 +61,10 @@ public sealed class StampCheckedJwtFixture : TestHost<Program>
 // The sample app's token carries the Identity user's id and security stamp under its own claim names.
 public sealed class SampleAppUserSeeder : ITestUserSeeder
 {
-    public async Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services)
+    public async Task<IReadOnlyList<Claim>> SeedAsync(TestUserSeedContext context)
     {
-        IReadOnlyList<Claim> identity = await new IdentityUserSeeder<AppUser, IdentityRole>().SeedAsync(user, services);
+        TestUser user = context.User;
+        IReadOnlyList<Claim> identity = await new IdentityUserSeeder<AppUser, IdentityRole>().SeedAsync(context);
         string id = identity.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value;
         string stamp = identity.First(claim => claim.Type == new IdentityOptions().ClaimsIdentity.SecurityStampClaimType).Value;
         return [new("sub", id), new("name", user.Name), new(SampleClaims.SecurityStamp, stamp), .. user.Roles.Select(role => new Claim("role", role))];

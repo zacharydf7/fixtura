@@ -116,9 +116,9 @@ internal sealed class SeedOwed : ITestResource
 
     public bool Settle() => Interlocked.Exchange(ref _owed, 0) == 1;
 
-    public Task<string?> ProvisionAsync(string namePrefix) => Task.FromResult<string?>(null);
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context) => Task.FromResult(TestResourceStatus.Ready);
 
-    public Task ResetAsync()
+    public Task ResetAsync(CancellationToken cancellationToken)
     {
         Volatile.Write(ref _owed, 1);
         return Task.CompletedTask;

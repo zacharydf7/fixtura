@@ -13,7 +13,7 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required: null);
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.StartsWith("SQL Server not reachable at tcp:127.0.0.1,1", reason);
         Assert.Matches(@"The server came from the FIXTURA_TEST_SERVER_\w+ variable, or LocalDB when it isn't set\.$", reason);
@@ -26,7 +26,8 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required);
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => sql.ProvisionAsync("fixtura_00000000"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sql.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
 
         Assert.EndsWith("is set, so SQL Server is required.", error.Message);
     }
@@ -36,7 +37,7 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required: "false");
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.NotNull(reason);
     }
@@ -47,7 +48,8 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required: null, TimeSpan.FromMilliseconds(500));
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000").WaitAsync(TestContext.Current.CancellationToken);
+        var context = new TestResourceContext("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(context).WaitAsync(TestContext.Current.CancellationToken)).UnavailableReason;
 
         Assert.NotNull(reason);
     }
@@ -58,10 +60,10 @@ public class SqlServerGateTests
         using var server = new SilentServer();
         await using SqlServerResource first = Resource(server.ConnectionString, required: null, TimeSpan.FromSeconds(1));
         await using SqlServerResource second = Resource(server.ConnectionString, required: null, TimeSpan.FromSeconds(1));
-        await first.ProvisionAsync("fixtura_00000000");
+        await first.ProvisionAsync(new TestResourceContext("fixtura_00000000"));
         int connectionsAfterFirst = server.Connections;
 
-        string? reason = await second.ProvisionAsync("fixtura_00000001");
+        string? reason = (await second.ProvisionAsync(new TestResourceContext("fixtura_00000001"))).UnavailableReason;
 
         Assert.NotNull(reason);
         Assert.Equal(connectionsAfterFirst, server.Connections);
@@ -73,12 +75,49 @@ public class SqlServerGateTests
     {
         await using var sql = new SqlServerResource(new SqlServerOptions
         {
-            Source = SqlServerSource.From("the test's source", () => Task.FromResult<string?>(null))
+            Source = SqlServerSource.From("the test's source", _ => Task.FromResult<string?>(null))
         });
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.Equal("No SQL Server is configured in the test's source.", reason);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldPassItsTokenToTheSource_WhenGivenOne()
+    {
+        using var cancel = new CancellationTokenSource();
+        CancellationToken seen = default;
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.From("the test's source", token =>
+            {
+                seen = token;
+                return Task.FromResult<string?>(null);
+            })
+        });
+
+        await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000", cancel.Token));
+
+        Assert.Equal(cancel.Token, seen);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldThrow_WhenCancelledWhileTheSourceResolves()
+    {
+        using var cancel = new CancellationTokenSource();
+        await using var sql = new SqlServerResource(new SqlServerOptions
+        {
+            Source = SqlServerSource.From("the test's source", async token =>
+            {
+                await cancel.CancelAsync();
+                token.ThrowIfCancellationRequested();
+                return null;
+            })
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            sql.ProvisionAsync(new TestResourceContext("fixtura_00000000", cancel.Token)));
     }
 
     [Fact]
@@ -86,10 +125,10 @@ public class SqlServerGateTests
     {
         await using var sql = new SqlServerResource(new SqlServerOptions
         {
-            Source = SqlServerSource.From("the test's source", () => throw new InvalidOperationException("Docker isn't running."))
+            Source = SqlServerSource.From("the test's source", _ => throw new InvalidOperationException("Docker isn't running."))
         });
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.Equal("Couldn't get a SQL Server from the test's source: Docker isn't running.", reason);
     }
@@ -101,11 +140,12 @@ public class SqlServerGateTests
         Environment.SetEnvironmentVariable(required, "true");
         await using var sql = new SqlServerResource(new SqlServerOptions
         {
-            Source = SqlServerSource.From("the test's source", () => throw new InvalidOperationException("Docker isn't running.")),
+            Source = SqlServerSource.From("the test's source", _ => throw new InvalidOperationException("Docker isn't running.")),
             RequiredWhenSet = required
         });
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => sql.ProvisionAsync("fixtura_00000000"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sql.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
 
         Assert.StartsWith("Couldn't get a SQL Server from the test's source: Docker isn't running.", error.Message);
     }
@@ -115,7 +155,8 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required: null, TimeSpan.Zero);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sql.ProvisionAsync("fixtura_00000000"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            sql.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
     }
 
     // Dispose drops every database that starts with the prefix, so any other prefix could drop unrelated databases.
@@ -127,9 +168,10 @@ public class SqlServerGateTests
     {
         await using SqlServerResource sql = UnreachableServer(required: null);
 
-        var error = await Assert.ThrowsAsync<ArgumentException>(() => sql.ProvisionAsync(prefix));
+        var error = await Assert.ThrowsAsync<ArgumentException>(() =>
+            sql.ProvisionAsync(new TestResourceContext(prefix)));
 
-        Assert.Equal("namePrefix", error.ParamName);
+        Assert.Equal("context", error.ParamName);
     }
 
     // CI leaves a secret blank in a fork's pull request; .NET deletes a variable set to "", so this sets a space.
@@ -139,9 +181,10 @@ public class SqlServerGateTests
         string name = $"FIXTURA_TEST_SERVER_{Guid.NewGuid():N}";
         Environment.SetEnvironmentVariable(name, " ");
 
-        string? server = await SqlServerSource.EnvironmentVariableOrLocalDb(name).ResolveAsync();
+        string? server = await SqlServerSource.EnvironmentVariableOrLocalDb(name)
+            .ResolveAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(await SqlServerSource.LocalDb.ResolveAsync(), server);
+        Assert.Equal(await SqlServerSource.LocalDb.ResolveAsync(TestContext.Current.CancellationToken), server);
     }
 
     // A unique application name per test, because the resource checks each connection string once per process.

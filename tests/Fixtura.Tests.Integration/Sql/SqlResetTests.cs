@@ -10,7 +10,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int rows = await db.ScalarAsync(
             "SELECT (SELECT COUNT(*) FROM Customers) + (SELECT COUNT(*) FROM Orders) + (SELECT COUNT(*) FROM Departments) + (SELECT COUNT(*) FROM Staff)");
@@ -22,7 +22,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int kept = await db.ScalarAsync("""
             SELECT (SELECT COUNT(*) FROM Countries) + (SELECT COUNT(*) FROM Currencies) + (SELECT COUNT(*) FROM Regions)
@@ -36,7 +36,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int invoices = await db.ScalarAsync("SELECT NEXT VALUE FOR InvoiceNumbers");
         int regions = await db.ScalarAsync("SELECT NEXT VALUE FOR RegionNumbers");
@@ -49,7 +49,8 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Countries", "Countrys"]);
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(db.Sql.ResetAsync);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            db.Sql.ResetAsync(TestContext.Current.CancellationToken));
 
         Assert.StartsWith("KeepOnReset names Countrys, which match no table", error.Message);
     }
@@ -59,7 +60,8 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Prices", "PricesHistory"]);
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(db.Sql.ResetAsync);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            db.Sql.ResetAsync(TestContext.Current.CancellationToken));
 
         Assert.StartsWith("KeepOnReset names PricesHistory, the history table of dbo.Prices.", error.Message);
     }
@@ -70,7 +72,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Rates"]);
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(1, await db.ScalarAsync("SELECT COUNT(*) FROM dbo.Rates"));
     }
@@ -80,7 +82,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync(keep: ["Countrys"], createDatabase: false);
 
-        Exception? error = await Record.ExceptionAsync(db.Sql.ResetAsync);
+        Exception? error = await Record.ExceptionAsync(() => db.Sql.ResetAsync(TestContext.Current.CancellationToken));
 
         Assert.Null(error);
     }
@@ -90,7 +92,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int id = await db.ScalarAsync("INSERT INTO Customers (CountryId) VALUES (1); SELECT CAST(SCOPE_IDENTITY() AS int)");
         Assert.Equal(1, id);
@@ -101,7 +103,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int untrusted = await db.ScalarAsync("SELECT COUNT(*) FROM sys.foreign_keys WHERE is_disabled = 1 OR is_not_trusted = 1");
         Assert.Equal(0, untrusted);
@@ -112,7 +114,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int rows = await db.ScalarAsync("SELECT (SELECT COUNT(*) FROM Prices) + (SELECT COUNT(*) FROM PricesHistory)");
         int retention = await db.ScalarAsync("SELECT history_retention_period FROM sys.tables WHERE name = 'Prices' AND temporal_type = 2");
@@ -125,7 +127,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int rows = await db.ScalarAsync("SELECT (SELECT COUNT(*) FROM AuditLog) + (SELECT COUNT(*) FROM SoftBooks)");
         Assert.Equal(0, rows);
@@ -136,7 +138,7 @@ public class SqlResetTests
     {
         await using ResetDatabase db = await ResetDatabase.CreateAsync();
 
-        await db.Sql.ResetAsync();
+        await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
 
         int unchanged = await db.ScalarAsync("""
             SELECT COUNT(*) FROM sys.triggers
@@ -157,7 +159,7 @@ public class SqlResetTests
         CultureInfo.CurrentCulture = unicodeMinus;
         try
         {
-            await db.Sql.ResetAsync();
+            await db.Sql.ResetAsync(TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -249,7 +251,8 @@ public class SqlResetTests
                 ReadyTimeout = TimeSpan.FromSeconds(15),
                 KeepOnReset = keep ?? ["dbo.Countries", "Currencies", "AuditLog", "[dbo].[Regions]"]
             });
-            string? unavailable = await sql.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+            var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+            string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
             Assert.SkipWhen(unavailable is not null, unavailable ?? "");
 
             var db = new ResetDatabase(sql, sql.Database("Shop"));

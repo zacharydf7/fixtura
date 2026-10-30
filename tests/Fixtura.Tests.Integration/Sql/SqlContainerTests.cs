@@ -61,7 +61,7 @@ public class SqlContainerGateTests
     {
         await using var sql = new SqlServerResource(new SqlServerOptions { Source = SqlServerSource.Container("fixtura.invalid/no-such-image:1") });
 
-        string? reason = await sql.ProvisionAsync("fixtura_00000000");
+        string? reason = (await sql.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.StartsWith("Couldn't get a SQL Server from a SQL Server container (fixtura.invalid/no-such-image:1): ", reason);
     }
@@ -74,7 +74,7 @@ public class SqlContainerGateTests
         Environment.SetEnvironmentVariable(name, "Server=ci-sql");
         SqlServerSource source = SqlServerSource.EnvironmentVariableOrContainer(name, "fixtura.invalid/no-such-image:1");
 
-        string? server = await source.ResolveAsync();
+        string? server = await source.ResolveAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("Server=ci-sql", server);
     }
@@ -87,6 +87,6 @@ public class SqlContainerGateTests
         Environment.SetEnvironmentVariable(name, " ");
         SqlServerSource source = SqlServerSource.EnvironmentVariableOrContainer(name, "fixtura.invalid/no-such-image:1");
 
-        await Assert.ThrowsAnyAsync<Exception>(source.ResolveAsync);
+        await Assert.ThrowsAnyAsync<Exception>(() => source.ResolveAsync(TestContext.Current.CancellationToken));
     }
 }

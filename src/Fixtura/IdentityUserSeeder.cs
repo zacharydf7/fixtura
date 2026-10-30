@@ -11,8 +11,10 @@ namespace Fixtura;
 /// </summary>
 public class IdentityUserSeeder<TUser, TRole> : ITestUserSeeder where TUser : class, new() where TRole : class, new()
 {
-    public async Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services)
+    public async Task<IReadOnlyList<Claim>> SeedAsync(TestUserSeedContext context)
     {
+        TestUser user = context.User;
+        IServiceProvider services = context.Services;
         var users = services.GetRequiredService<UserManager<TUser>>();
         // An id outlives a rename the app may have made, so it finds the user first when the test gave one.
         TUser? existing = user.Id is null ? await users.FindByNameAsync(user.Name) : await users.FindByIdAsync(user.Id);

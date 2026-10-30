@@ -34,7 +34,8 @@ public sealed class PostgresNotesFixture : TestHost<Program>
             RequiredWhenSet = "FIXTURA_POSTGRES_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
-        string? unavailable = await postgres.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        string? unavailable = (await postgres.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
     }
 
@@ -199,10 +200,28 @@ public class PostgreSqlGateTests
     {
         await using PostgreSqlResource postgres = Unreachable(required: null);
 
-        string? reason = await postgres.ProvisionAsync("fixtura_00000000");
+        string? reason = (await postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.StartsWith("PostgreSQL not reachable at 127.0.0.1:1", reason);
         Assert.EndsWith("The server came from the test's server.", reason);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldThrow_WhenCancelledWhileTheSourceResolves()
+    {
+        using var cancel = new CancellationTokenSource();
+        await using var postgres = new PostgreSqlResource(new PostgreSqlOptions
+        {
+            Source = PostgreSqlSource.From("the test's source", async token =>
+            {
+                await cancel.CancelAsync();
+                token.ThrowIfCancellationRequested();
+                return null;
+            })
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000", cancel.Token)));
     }
 
     [Fact]
@@ -210,7 +229,8 @@ public class PostgreSqlGateTests
     {
         await using PostgreSqlResource postgres = Unreachable(required: "true");
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => postgres.ProvisionAsync("fixtura_00000000"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000")));
 
         Assert.EndsWith("is set, so PostgreSQL is required.", error.Message);
     }
@@ -222,7 +242,7 @@ public class PostgreSqlGateTests
         Environment.SetEnvironmentVariable(name, " ");
         await using var postgres = new PostgreSqlResource(new PostgreSqlOptions { Source = PostgreSqlSource.EnvironmentVariable(name) });
 
-        string? reason = await postgres.ProvisionAsync("fixtura_00000000");
+        string? reason = (await postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.Equal($"No PostgreSQL server is configured in the {name} variable.", reason);
     }
@@ -232,9 +252,10 @@ public class PostgreSqlGateTests
     {
         await using PostgreSqlResource postgres = Unreachable(required: null);
 
-        var error = await Assert.ThrowsAsync<ArgumentException>(() => postgres.ProvisionAsync("Sales"));
+        var error = await Assert.ThrowsAsync<ArgumentException>(() =>
+            postgres.ProvisionAsync(new TestResourceContext("Sales")));
 
-        Assert.Equal("namePrefix", error.ParamName);
+        Assert.Equal("context", error.ParamName);
     }
 
     // A unique application name per test, because the resource checks each connection string once per process.
@@ -245,7 +266,7 @@ public class PostgreSqlGateTests
         string server = $"Host=127.0.0.1;Port=1;Username=test;Password=test;Application Name={Guid.NewGuid():N}";
         return new PostgreSqlResource(new PostgreSqlOptions
         {
-            Source = PostgreSqlSource.From("the test's server", () => Task.FromResult<string?>(server)),
+            Source = PostgreSqlSource.From("the test's server", _ => Task.FromResult<string?>(server)),
             RequiredWhenSet = variable,
             ReadyTimeout = TimeSpan.FromSeconds(1)
         });
@@ -262,7 +283,7 @@ public class PostgreSqlContainerGateTests
     {
         await using var postgres = new PostgreSqlResource(new PostgreSqlOptions { Source = PostgreSqlSource.Container(MissingImage) });
 
-        string? reason = await postgres.ProvisionAsync("fixtura_00000000");
+        string? reason = (await postgres.ProvisionAsync(new TestResourceContext("fixtura_00000000"))).UnavailableReason;
 
         Assert.StartsWith($"Couldn't get a PostgreSQL server from a PostgreSQL container ({MissingImage}): ", reason);
     }
@@ -273,7 +294,8 @@ public class PostgreSqlContainerGateTests
         string name = $"FIXTURA_TEST_POSTGRES_{Guid.NewGuid():N}";
         Environment.SetEnvironmentVariable(name, "Host=ci-postgres");
 
-        string? server = await PostgreSqlSource.EnvironmentVariableOrContainer(name, MissingImage).ResolveAsync();
+        string? server = await PostgreSqlSource.EnvironmentVariableOrContainer(name, MissingImage)
+            .ResolveAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("Host=ci-postgres", server);
     }
@@ -285,6 +307,6 @@ public class PostgreSqlContainerGateTests
         Environment.SetEnvironmentVariable(name, " ");
         PostgreSqlSource source = PostgreSqlSource.EnvironmentVariableOrContainer(name, MissingImage);
 
-        await Assert.ThrowsAnyAsync<Exception>(source.ResolveAsync);
+        await Assert.ThrowsAnyAsync<Exception>(() => source.ResolveAsync(TestContext.Current.CancellationToken));
     }
 }

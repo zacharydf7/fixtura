@@ -137,7 +137,8 @@ public class SqlServerResourceTests
             RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
-        string? unavailable = await sql.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
         var probe = new SqlConnectionStringBuilder(sql.Database("Probe"));
         string database = probe.InitialCatalog;
@@ -211,7 +212,8 @@ public class SqlServerResourceTests
             RequiredWhenSet = "FIXTURA_SQLSERVER_REQUIRED",
             ReadyTimeout = TimeSpan.FromSeconds(15)
         });
-        string? unavailable = await sql.ProvisionAsync("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        var context = new TestResourceContext("fixtura_" + Guid.NewGuid().ToString("N")[..8]);
+        string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
         return new SqlConnectionStringBuilder(sql.Database("Unused")) { InitialCatalog = "" };
     }

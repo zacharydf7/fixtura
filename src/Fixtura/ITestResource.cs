@@ -7,14 +7,14 @@ namespace Fixtura;
 public interface ITestResource : IAsyncDisposable
 {
     /// <summary>
-    /// Returns why the resource is unavailable, or null when it is ready. Throws when it is required and unavailable, so
-    /// the fixture fails instead of skipping.
+    /// Returns <see cref="TestResourceStatus.Ready"/>, or <see cref="TestResourceStatus.Unavailable"/> with the reason the
+    /// fixture's tests are skipped. Throws when it is required and unavailable, so the fixture fails instead of skipping.
     /// </summary>
-    Task<string?> ProvisionAsync(string namePrefix);
+    Task<TestResourceStatus> ProvisionAsync(TestResourceContext context);
 
     /// <summary>
     /// Puts the resource's data back to its starting state for <c>ResetDataAsync</c>, for example by emptying a database's
     /// tables. Resources with no data to reset keep this default, which does nothing.
     /// </summary>
-    Task ResetAsync() => Task.CompletedTask;
+    Task ResetAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

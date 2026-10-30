@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Xunit;
 
 namespace Fixtura;
 
@@ -97,12 +98,13 @@ public sealed class TestUsers
     // Seeds before every sign-in, so claims such as the security stamp are never stale; one seeder runs at a time.
     private async Task<IReadOnlyList<Claim>> SeedAsync(TestUser user, IServiceProvider services)
     {
-        await _seeding.WaitAsync();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        await _seeding.WaitAsync(cancellationToken);
         try
         {
             await using AsyncServiceScope scope = services.CreateAsyncScope();
             var seeder = (ITestUserSeeder)ActivatorUtilities.CreateInstance(scope.ServiceProvider, _seeder!);
-            return await seeder.SeedAsync(user, scope.ServiceProvider);
+            return await seeder.SeedAsync(new TestUserSeedContext(user, scope.ServiceProvider, cancellationToken));
         }
         finally
         {

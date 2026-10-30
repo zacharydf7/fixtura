@@ -78,6 +78,18 @@ public class OverrideDisposalTests(RecordingResourceFixture api) : IClassFixture
     }
 }
 
+public class ResourceContextTests(RecordingResourceFixture api) : IClassFixture<RecordingResourceFixture>
+{
+    [Fact]
+    public void ProvisionAsync_ShouldGetThePrefixAndACancellableToken_WhenTheFixtureInitializes()
+    {
+        TestResourceContext context = api.Resource.Context!;
+
+        Assert.Matches("^fixtura_[0-9a-f]{8}$", context.NamePrefix);
+        Assert.True(context.CancellationToken.CanBeCanceled);
+    }
+}
+
 // xUnit's own assertions rethrow skips, so these tests catch the skip by hand to check it.
 public class SkipGateTests(UnavailableFixture api) : IClassFixture<UnavailableFixture>
 {

@@ -25,8 +25,9 @@ public class IntKeyedSeederTests
     {
         await using ServiceProvider provider = NumberedStore();
         using IServiceScope scope = provider.CreateScope();
+        var context = new TestUserSeedContext(TestUser.Named("jo").WithId("42"), scope.ServiceProvider);
 
-        await new NumberedUserSeeder().SeedAsync(TestUser.Named("jo").WithId("42"), scope.ServiceProvider);
+        await new NumberedUserSeeder().SeedAsync(context);
 
         NumberedUser? stored = await scope.ServiceProvider.GetRequiredService<UserManager<NumberedUser>>().FindByIdAsync("42");
         Assert.Equal("jo", stored?.UserName);
@@ -37,9 +38,10 @@ public class IntKeyedSeederTests
     {
         await using ServiceProvider provider = NumberedStore();
         using IServiceScope scope = provider.CreateScope();
+        var context = new TestUserSeedContext(TestUser.Named("jo").WithId("42"), scope.ServiceProvider);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new IdentityUserSeeder<NumberedUser, NumberedRole>().SeedAsync(TestUser.Named("jo").WithId("42"), scope.ServiceProvider));
+            new IdentityUserSeeder<NumberedUser, NumberedRole>().SeedAsync(context));
 
         Assert.Contains("set its id from TestUser.Id in NewUser", error.Message);
     }

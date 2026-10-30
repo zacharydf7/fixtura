@@ -59,7 +59,9 @@ database the app's contexts use, so only data seeded with `HasData` is left.
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#on-reset)]
 
-A custom resource resets its own data in `ResetAsync`:
+A custom resource resets its own data in `ResetAsync`. `ProvisionAsync` gets the fixture's name prefix and a
+cancellation token, and returns `TestResourceStatus.Ready`, or `TestResourceStatus.Unavailable(reason)` to skip the
+fixture's tests:
 
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#custom-resource)]
 

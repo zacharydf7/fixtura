@@ -15,33 +15,33 @@ internal static class SqliteReset
         SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence';
         """;
 
-    public static async Task ResetAsync(SqliteConnection connection)
+    public static async Task ResetAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         // SQLite ignores this inside a transaction; it holds for this connection only, so tables empty in any order.
         await using (var foreignKeysOff = new SqliteCommand("PRAGMA foreign_keys = OFF;", connection))
         {
-            await foreignKeysOff.ExecuteNonQueryAsync();
+            await foreignKeysOff.ExecuteNonQueryAsync(cancellationToken);
         }
 
         var tables = new List<string>();
         var triggers = new List<(string Name, string Sql)>();
         bool hasSequence;
         await using (var read = new SqliteCommand(ReadSchema, connection))
-        await using (SqliteDataReader reader = await read.ExecuteReaderAsync())
+        await using (SqliteDataReader reader = await read.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 tables.Add(reader.GetString(0));
             }
 
-            await reader.NextResultAsync();
-            while (await reader.ReadAsync())
+            await reader.NextResultAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
             {
                 triggers.Add((reader.GetString(0), reader.GetString(1)));
             }
 
-            await reader.NextResultAsync();
-            await reader.ReadAsync();
+            await reader.NextResultAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
             hasSequence = reader.GetInt64(0) > 0;
         }
 
@@ -56,10 +56,10 @@ internal static class SqliteReset
         }
 
         script.AddRange(triggers.Select(trigger => trigger.Sql + ";"));
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync();
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
         await using var command = new SqliteCommand(string.Join(Environment.NewLine, script), connection, transaction);
-        await command.ExecuteNonQueryAsync();
-        await transaction.CommitAsync();
+        await command.ExecuteNonQueryAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private static string Quote(string name) => $"\"{name.Replace("\"", "\"\"")}\"";

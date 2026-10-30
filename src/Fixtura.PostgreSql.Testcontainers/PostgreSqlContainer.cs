@@ -24,7 +24,7 @@ public static class PostgreSqlContainer
         /// test run. Without Docker the fixture's tests skip with the reason.
         /// </summary>
         public static PostgreSqlSource Container(string image = DefaultImage) =>
-            PostgreSqlSource.From($"a PostgreSQL container ({image})", async () => await StartOnceAsync(image));
+            PostgreSqlSource.From($"a PostgreSQL container ({image})", async cancellationToken => await StartOnceAsync(image).WaitAsync(cancellationToken));
 
         /// <summary>
         /// The connection string in the environment variable, such as a CI service's server, or a PostgreSQL container
@@ -32,11 +32,11 @@ public static class PostgreSqlContainer
         /// </summary>
         public static PostgreSqlSource EnvironmentVariableOrContainer(string name, string image = DefaultImage) =>
             PostgreSqlSource.From($"the {name} variable, or a PostgreSQL container ({image}) when it isn't set",
-                async () =>
+                async cancellationToken =>
                 {
                     // A blank variable counts as unset: CI leaves a secret blank in a fork's pull request.
                     string? server = Environment.GetEnvironmentVariable(name);
-                    return string.IsNullOrWhiteSpace(server) ? await StartOnceAsync(image) : server;
+                    return string.IsNullOrWhiteSpace(server) ? await StartOnceAsync(image).WaitAsync(cancellationToken) : server;
                 });
     }
 

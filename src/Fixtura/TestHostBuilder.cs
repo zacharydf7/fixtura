@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Xunit;
 
 namespace Fixtura;
 
@@ -251,10 +252,11 @@ public sealed class TestHostBuilder
     {
         foreach (ITestResource resource in _resources)
         {
-            string? reason = await resource.ProvisionAsync(_namePrefix);
-            if (reason is not null)
+            var context = new TestResourceContext(_namePrefix, TestContext.Current.CancellationToken);
+            TestResourceStatus status = await resource.ProvisionAsync(context);
+            if (status.UnavailableReason is not null)
             {
-                return reason;
+                return status.UnavailableReason;
             }
         }
 
@@ -325,7 +327,7 @@ public sealed class TestHostBuilder
         _clock?.AdjustTime(_clockStart);
         foreach (ITestResource resource in (_parent ?? this)._resources)
         {
-            await resource.ResetAsync();
+            await resource.ResetAsync(TestContext.Current.CancellationToken);
         }
 
         Http.Reset();

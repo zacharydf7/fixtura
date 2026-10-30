@@ -39,21 +39,21 @@ public sealed class SqliteResource : ITestResource
         return connectionString;
     }
 
-    public Task<string?> ProvisionAsync(string namePrefix)
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
-        _prefix = namePrefix;
-        return Task.FromResult<string?>(null);
+        _prefix = context.NamePrefix;
+        return Task.FromResult(TestResourceStatus.Ready);
     }
 
     /// <summary>
     /// Empties every table in this fixture's databases except EF Core's migrations history, so the next test starts from
     /// the schema the app created.
     /// </summary>
-    public async Task ResetAsync()
+    public async Task ResetAsync(CancellationToken cancellationToken)
     {
         foreach (SqliteConnection connection in KeptOpen())
         {
-            await SqliteReset.ResetAsync(connection);
+            await SqliteReset.ResetAsync(connection, cancellationToken);
         }
     }
 

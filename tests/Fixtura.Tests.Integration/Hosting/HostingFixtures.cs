@@ -91,11 +91,11 @@ public sealed class UnavailableFirstFixture : TestHost<Program>
 // Records when it provisions, after a pause, so a parallel provisioner would let a later resource finish first.
 public sealed class OrderedResource(string name, List<string> provisioned) : ITestResource
 {
-    public async Task<string?> ProvisionAsync(string namePrefix)
+    public async Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
-        await Task.Delay(name == "server" ? 50 : 0);
+        await Task.Delay(name == "server" ? 50 : 0, context.CancellationToken);
         provisioned.Add(name);
-        return null;
+        return TestResourceStatus.Ready;
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -103,14 +103,16 @@ public sealed class OrderedResource(string name, List<string> provisioned) : ITe
 
 public sealed class RecordingResource : ITestResource
 {
-    public bool Provisioned { get; private set; }
+    public TestResourceContext? Context { get; private set; }
+
+    public bool Provisioned => Context is not null;
 
     public bool Disposed { get; private set; }
 
-    public Task<string?> ProvisionAsync(string namePrefix)
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
-        Provisioned = true;
-        return Task.FromResult<string?>(null);
+        Context = context;
+        return Task.FromResult(TestResourceStatus.Ready);
     }
 
     public ValueTask DisposeAsync()
@@ -122,7 +124,8 @@ public sealed class RecordingResource : ITestResource
 
 public sealed class UnavailableResource : ITestResource
 {
-    public Task<string?> ProvisionAsync(string namePrefix) => Task.FromResult<string?>("The test resource is unavailable.");
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context) =>
+        Task.FromResult(TestResourceStatus.Unavailable("The test resource is unavailable."));
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
@@ -130,7 +133,7 @@ public sealed class UnavailableResource : ITestResource
 // Stands for a resource whose "required" switch is on, such as a database server in CI.
 public sealed class RequiredResource : ITestResource
 {
-    public Task<string?> ProvisionAsync(string namePrefix) =>
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context) =>
         throw new InvalidOperationException("The test resource is required and unavailable.");
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;

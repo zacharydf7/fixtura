@@ -32,18 +32,19 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
     /// Takes the prefix the fixture passes, such as <c>fixtura_1a2b3c4d</c>, and throws for any other: dispose drops every
     /// database whose name starts with it.
     /// </summary>
-    public async Task<string?> ProvisionAsync(string namePrefix)
+    public async Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
+        string namePrefix = context.NamePrefix;
         if (!Regex.IsMatch(namePrefix, "^fixtura_[0-9a-f]{8}$"))
         {
             throw new ArgumentException($"'{namePrefix}' is not a fixture's name prefix, such as fixtura_1a2b3c4d. Dispose drops " +
-                "every database that starts with the prefix, so only the one the fixture passes is accepted.", nameof(namePrefix));
+                "every database that starts with the prefix, so only the one the fixture passes is accepted.", nameof(context));
         }
 
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.ReadyTimeout, TimeSpan.Zero, nameof(PostgreSqlOptions.ReadyTimeout));
         _prefix = namePrefix;
-        (string? server, string? reason) = await ResolveAsync();
-        if (reason is null && await CheckOnceAsync(server!) is { } unreachable)
+        (string? server, string? reason) = await ResolveAsync(context.CancellationToken);
+        if (reason is null && await CheckOnceAsync(server!).WaitAsync(context.CancellationToken) is { } unreachable)
         {
             reason = $"{unreachable} The server came from {options.Source}.";
         }
@@ -51,7 +52,7 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
         if (server is not null && reason is null)
         {
             _server = server;
-            return null;
+            return TestResourceStatus.Ready;
         }
 
         if (IsRequired())
@@ -59,7 +60,7 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
             throw new InvalidOperationException($"{reason} {options.RequiredWhenSet} is set, so PostgreSQL is required.");
         }
 
-        return reason;
+        return TestResourceStatus.Unavailable(reason!);
     }
 
     /// <summary>
@@ -67,19 +68,19 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
     /// <see cref="PostgreSqlOptions.KeepOnReset"/>, and restarts identity columns and the sequences only those tables'
     /// defaults draw from, so the next test starts from the schema the app created. Throws when a kept name matches no table in any of them.
     /// </summary>
-    public async Task ResetAsync()
+    public async Task ResetAsync(CancellationToken cancellationToken)
     {
         if (_server is null)
         {
             return;
         }
 
-        List<string> databases = await FixtureDatabasesAsync(_server);
+        List<string> databases = await FixtureDatabasesAsync(_server, cancellationToken);
         var found = new HashSet<string>();
         foreach (string database in databases)
         {
             string connection = new NpgsqlConnectionStringBuilder(_server) { Database = database }.ConnectionString;
-            found.UnionWith(await PostgreSqlReset.ResetAsync(connection, options.KeepOnReset));
+            found.UnionWith(await PostgreSqlReset.ResetAsync(connection, options.KeepOnReset, cancellationToken));
         }
 
         // Until the app creates its databases there is nothing a kept name could match.
@@ -103,7 +104,7 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
         await connection.OpenAsync();
 
         // DROP DATABASE can't share a command with other statements, so each database gets its own.
-        foreach (string database in await FixtureDatabasesAsync(_server))
+        foreach (string database in await FixtureDatabasesAsync(_server, CancellationToken.None))
         {
             await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS {Quote(database)} WITH (FORCE)", connection);
             await drop.ExecuteNonQueryAsync();
@@ -117,14 +118,14 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
     }
 
     // A source that throws, such as a container that can't start, is unavailable like one that finds no server.
-    private async Task<(string? Server, string? Reason)> ResolveAsync()
+    private async Task<(string? Server, string? Reason)> ResolveAsync(CancellationToken cancellationToken)
     {
         try
         {
-            string? server = await options.Source.ResolveAsync();
+            string? server = await options.Source.ResolveAsync(cancellationToken);
             return server is null ? (null, $"No PostgreSQL server is configured in {options.Source}.") : (server, null);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             return (null, $"Couldn't get a PostgreSQL server from {options.Source}: {exception.Message}");
         }
@@ -154,16 +155,16 @@ public sealed class PostgreSqlResource(PostgreSqlOptions options) : ITestResourc
         }
     }
 
-    private async Task<List<string>> FixtureDatabasesAsync(string server)
+    private async Task<List<string>> FixtureDatabasesAsync(string server, CancellationToken cancellationToken)
     {
         await using var connection = new NpgsqlConnection(Maintenance(server));
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
         await using var command = new NpgsqlCommand(
             "SELECT datname FROM pg_database WHERE datname LIKE @pattern AND datallowconn", connection);
         command.Parameters.AddWithValue("pattern", Like(_prefix) + "\\_%");
         var databases = new List<string>();
-        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
             databases.Add(reader.GetString(0));
         }

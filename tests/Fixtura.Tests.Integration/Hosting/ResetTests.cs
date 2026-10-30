@@ -21,9 +21,9 @@ public sealed class ResettableFixture : TestHost<Program>
 
 public sealed class ResettingResource(List<string> resets) : ITestResource
 {
-    public Task<string?> ProvisionAsync(string namePrefix) => Task.FromResult<string?>(null);
+    public Task<TestResourceStatus> ProvisionAsync(TestResourceContext context) => Task.FromResult(TestResourceStatus.Ready);
 
-    public Task ResetAsync()
+    public Task ResetAsync(CancellationToken cancellationToken)
     {
         resets.Add("resource");
         return Task.CompletedTask;

@@ -303,7 +303,9 @@ host.LogToTestOutput(LogLevel.Warning); // or a higher minimum
 A resource, such as a database server, is provisioned in the fixture's `InitializeAsync`. When it's unavailable, every
 test that uses the fixture is skipped with the resource's reason, and no test has to call a skip helper. A resource can
 also be required, for example in CI, and then the fixture fails instead. Implement `ITestResource` and add it with
-`host.AddResource(...)`. Resources provision in the order they are added, so one can build on another, such as
+`host.AddResource(...)`: `ProvisionAsync` gets the fixture's name prefix and a cancellation token in a
+`TestResourceContext`, and returns `TestResourceStatus.Ready` or `TestResourceStatus.Unavailable(reason)`, or throws
+when the resource is required. Resources provision in the order they are added, so one can build on another, such as
 migrations on a database server; the first unavailable one skips the rest.
 
 ### SQL Server
@@ -332,7 +334,7 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
   once per test run, so an unreachable one costs the timeout once, not once per fixture.
 - Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
   server state, nobody is connected to them.
-- `SqlServerSource.From(description, async () => ...)` takes a server from your own code. Returning null, or throwing,
+- `SqlServerSource.From(description, async cancellationToken => ...)` takes a server from your own code. Returning null, or throwing,
   skips the fixture's tests with the reason, or fails them when the `RequiredWhenSet` variable is set.
 
 ### SQL Server in a container

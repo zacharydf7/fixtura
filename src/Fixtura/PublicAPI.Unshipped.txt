@@ -1,8 +1,16 @@
 #nullable enable
+*REMOVED*Fixtura.ITestResource.ProvisionAsync(string! namePrefix) -> System.Threading.Tasks.Task<string?>!
+*REMOVED*Fixtura.ITestResource.ResetAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Fixtura.ITestUserSeeder.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
+*REMOVED*Fixtura.IdentityUserSeeder<TUser, TRole>.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
 Fixtura.FakedClientResilience
 Fixtura.FakedClientResilience.Keep = 0 -> Fixtura.FakedClientResilience
 Fixtura.FakedClientResilience.Remove = 1 -> Fixtura.FakedClientResilience
 Fixtura.HttpFake.WaitForRequestAsync(System.Func<Fixtura.FakeHttpRequest!, bool>? match = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<Fixtura.FakeHttpRequest!>!
+Fixtura.ITestResource.ProvisionAsync(Fixtura.TestResourceContext! context) -> System.Threading.Tasks.Task<Fixtura.TestResourceStatus!>!
+Fixtura.ITestResource.ResetAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Fixtura.ITestUserSeeder.SeedAsync(Fixtura.TestUserSeedContext! context) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
+Fixtura.IdentityUserSeeder<TUser, TRole>.SeedAsync(Fixtura.TestUserSeedContext! context) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
 Fixtura.SignedInUser
 Fixtura.SignedInUser.BearerToken.get -> string?
 Fixtura.SignedInUser.Cookie.get -> System.Net.Cookie?
@@ -38,8 +46,21 @@ Fixtura.TestHostBuilder.UseFakeClock(System.DateTimeOffset? start = null) -> Fix
 Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHttp.Resilience.get -> Fixtura.FakedClientResilience
 Fixtura.TestHttp.Resilience.set -> void
+Fixtura.TestResourceContext
+Fixtura.TestResourceContext.CancellationToken.get -> System.Threading.CancellationToken
+Fixtura.TestResourceContext.NamePrefix.get -> string!
+Fixtura.TestResourceContext.TestResourceContext(string! namePrefix, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
+Fixtura.TestResourceStatus
+Fixtura.TestResourceStatus.UnavailableReason.get -> string?
 Fixtura.TestServices.DeferHostedService<THostedService>() -> Fixtura.TestServices!
+Fixtura.TestUserSeedContext
+Fixtura.TestUserSeedContext.CancellationToken.get -> System.Threading.CancellationToken
+Fixtura.TestUserSeedContext.Services.get -> System.IServiceProvider!
+Fixtura.TestUserSeedContext.TestUserSeedContext(Fixtura.TestUser! user, System.IServiceProvider! services, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
+Fixtura.TestUserSeedContext.User.get -> Fixtura.TestUser!
 Fixtura.TestUsers.Scheme.get -> string?
 Fixtura.TestUsers.Scheme.set -> void
+static Fixtura.TestResourceStatus.Ready.get -> Fixtura.TestResourceStatus!
+static Fixtura.TestResourceStatus.Unavailable(string! reason) -> Fixtura.TestResourceStatus!
 virtual Fixtura.TestHost<TProgram>.OnDisposingAsync() -> System.Threading.Tasks.ValueTask
 virtual Fixtura.TestHost<TProgram>.OnInitializedAsync() -> System.Threading.Tasks.ValueTask
