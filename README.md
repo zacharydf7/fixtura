@@ -95,6 +95,10 @@ Every typed swap throws `NothingMatchedException` when the app has no matching r
 the test run instead of silently testing the wrong thing. The same swaps, except `DeferHostedService`, exist as
 `IServiceCollection` extension methods for code that builds its own factory.
 
+`await api.EventuallyAsync(services => Assert...)` runs an assertion in a new scope until it passes, for work the app
+finishes after a request returns; after five seconds, or the timeout you give, its last failure is the test's. Pass
+`advanceClockBy` to move a fake clock between attempts, so a timer the app waits on comes due.
+
 A deferred service starts when a test has put its data in place, and the host still stops it. A `BackgroundService`'s
 `ExecuteTask` completes when its `ExecuteAsync` returns, so awaiting it waits out a worker that makes one pass; a worker
 that loops runs until the host stops it. `host.FailOnBackgroundServiceCrash()` fails the
@@ -223,6 +227,7 @@ Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
 - `Respond(method, path, status, json)` answers one route, and `Respond(status, json)` or `Respond(request => ...)`
   answers everything else. The latest matching response wins. A request nothing answers throws, naming the request.
 - `Requests` lists what the app sent: method, URI, headers and body, with `Json<T>()` to read the body.
+  `WaitForRequestAsync(request => ...)` waits for one the app sends later, such as from a background service.
 - Requests through clients without a fake throw, naming the client, so a forgotten fake or one under the wrong name
   can't reach the network. `host.Http.Unfaked = UnfakedHttpClients.Allow` lets them through. Clients the app creates
   with `new HttpClient()` can't be faked.

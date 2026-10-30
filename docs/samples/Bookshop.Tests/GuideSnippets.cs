@@ -21,6 +21,14 @@ internal static class GuideSnippets
         // </fake-clock>
     }
 
+    public static async Task Eventually(TestHost<Program> shop)
+    {
+        // <eventually>
+        await shop.EventuallyAsync(services =>
+            Assert.True(services.GetRequiredService<ShopDb>().Orders.Any(order => order.BookId == 1)));
+        // </eventually>
+    }
+
     public static async Task DeferredService(TestHostBuilder host, TestHost<Program> shop)
     {
         // <deferred-service>

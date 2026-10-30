@@ -116,6 +116,34 @@ public class HttpFakeTests(PartnersFixture api) : IClassFixture<PartnersFixture>
     }
 }
 
+// A fixture of its own, so a request another class sent can't satisfy the wait.
+public class WaitForRequestTests(PartnersFixture api) : IClassFixture<PartnersFixture>
+{
+    [Fact]
+    public async Task WaitForRequestAsync_ShouldReturnTheRequest_WhenTheAppSendsItAfterAWhile()
+    {
+        HttpClient client = await api.CreateClientAsync();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(200);
+            await client.GetAsync("/rates/EUR");
+        }, TestContext.Current.CancellationToken);
+
+        FakeHttpRequest request = await api.Rates.WaitForRequestAsync(sent => sent.Uri.AbsolutePath.EndsWith("/EUR"));
+
+        Assert.Equal(HttpMethod.Get, request.Method);
+    }
+
+    [Fact]
+    public async Task WaitForRequestAsync_ShouldNameTheClient_WhenNoMatchingRequestArrives()
+    {
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            api.Rates.WaitForRequestAsync(sent => sent.Uri.AbsolutePath.EndsWith("/JPY"), TimeSpan.FromMilliseconds(200)));
+
+        Assert.Contains("'rates' client", error.Message);
+    }
+}
+
 // A fixture of its own, because the tests change the fixture's fake.
 public class HttpFakeResetTests(PartnersFixture api) : IClassFixture<PartnersFixture>
 {

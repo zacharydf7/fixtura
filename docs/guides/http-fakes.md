@@ -33,6 +33,10 @@ written with the web defaults (camelCase).
 `Requests` lists what the app sent, oldest first, after the app's own handlers ran: method, URI, headers (by
 case-insensitive name) and body. `Json<T>()` reads the body with the web defaults.
 
+When the app sends the request later, from a background service or an outbox, wait for it instead of sleeping:
+`await fake.WaitForRequestAsync(request => ...)` returns the first request the condition accepts, or the first request
+at all without one, and fails after five seconds, or the timeout you give, naming the client.
+
 ## Unfaked clients
 
 Requests through a client without a fake throw, naming the client and how to fake it. So a forgotten fake, or one

@@ -8,6 +8,8 @@ public sealed class WorkLog
     public int Passes { get; set; }
 
     public bool Stopped { get; set; }
+
+    public TaskCompletionSource Running { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 }
 
 // One pass over its queue, as an outbox worker makes, then done.
@@ -25,6 +27,7 @@ public sealed class WaitingWorker(WorkLog log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        log.Running.TrySetResult();
         try
         {
             await Task.Delay(Timeout.Infinite, stoppingToken);
@@ -115,6 +118,7 @@ public class HostedServiceLifetimeTests
         var api = new DeferredWorkerFixture();
         await api.InitializeAsync();
         await api.StartHostedServiceAsync<WaitingWorker>(TestContext.Current.CancellationToken);
+        await api.Log.Running.Task;
 
         await api.DisposeAsync();
 

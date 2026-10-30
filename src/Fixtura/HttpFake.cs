@@ -34,6 +34,15 @@ public sealed class HttpFake
         }
     }
 
+    /// <summary>
+    /// Waits until the app has sent a request through this client that <paramref name="match"/> accepts, any request
+    /// unless given, and returns the first one. Fails after <paramref name="timeout"/>, five seconds unless given.
+    /// </summary>
+    public Task<FakeHttpRequest> WaitForRequestAsync(Func<FakeHttpRequest, bool>? match = null, TimeSpan? timeout = null) =>
+        Waiting.UntilAsync(() => Task.FromResult(Requests.FirstOrDefault(match ?? (_ => true))
+            ?? throw new InvalidOperationException($"The app sent no matching request through the '{ClientName}' client.")),
+            timeout);
+
     /// <summary>Answers every request that no method-and-path response matches, with JSON when given.</summary>
     public HttpFake Respond(HttpStatusCode status, object? json = null) => Add(new Route(null, null, _ => Response(status, json)));
 

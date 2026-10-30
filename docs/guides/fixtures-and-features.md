@@ -43,10 +43,27 @@ caring that one already includes the other.
 | `CreateClientAsync(user, options)` | The same, built with `TestClientOptions`; see below |
 | `Services` | The app's root services |
 | `CreateScope()` | A scope for resolving scoped services such as a DbContext |
+| `EventuallyAsync(services => ...)` | Runs an assertion in a new scope until it passes, for work the app finishes later; see below |
 | `StartHostedServiceAsync<T>()` | Starts a hosted service the fixture deferred; see [Swapping services](service-swaps.md) |
 | `ResetDataAsync()` | Puts the fixture's data back to its starting state; see [Resetting data](resetting-data.md) |
 | `WithOverrides(...)` | A second host with extra changes for a few tests; see [Kestrel and per-test overrides](kestrel-and-overrides.md) |
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |
+
+## Waiting for work the app finishes later
+
+After a request returns, the app may still be working: a background service drains a queue, an outbox sends mail.
+Instead of a `Task.Delay`, wait for the result:
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#eventually)]
+
+- `EventuallyAsync` runs the assertion in a new scope every few milliseconds until it passes. After five seconds, or the
+  timeout you give, the assertion's own last failure fails the test, with its usual message.
+- With a background service crashing while it waits, it stops at once with the crash, when the fixture uses
+  `host.FailOnBackgroundServiceCrash()`.
+- A fake clock stays put unless you pass `advanceClockBy`, which moves it that much between attempts, so a timer the app
+  waits on comes due.
+- For a request the app sends through a faked client, `WaitForRequestAsync` on the fake does the same; see
+  [Faking outbound HTTP](http-fakes.md).
 
 ## Client options
 

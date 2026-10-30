@@ -47,14 +47,17 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     private HostFactory Factory => FactoryAsync().GetAwaiter().GetResult();
 
-    private void ThrowIfABackgroundServiceCrashed()
+    private BackgroundService? CrashedBackgroundService()
     {
-        BackgroundService? crashed;
         lock (_gate)
         {
-            crashed = _watched.FirstOrDefault(service => service.ExecuteTask?.IsFaulted == true);
+            return _watched.FirstOrDefault(service => service.ExecuteTask?.IsFaulted == true);
         }
+    }
 
+    private void ThrowIfABackgroundServiceCrashed()
+    {
+        BackgroundService? crashed = CrashedBackgroundService();
         if (crashed is not null)
         {
             Exception error = crashed.ExecuteTask!.Exception!.InnerException!;
@@ -198,6 +201,49 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         ThrowIfABackgroundServiceCrashed();
         return services.CreateScope();
     }
+
+    /// <summary>
+    /// Runs <paramref name="assertion"/> in a new scope until it passes, for work the app finishes after a request returns,
+    /// such as a background service's. After <paramref name="timeout"/>, five seconds unless given, its last failure is the
+    /// test's, and a background service's crash ends the wait at once when the fixture fails on crashes. With a fake clock,
+    /// <paramref name="advanceClockBy"/> moves it that much between attempts, so a timer the app waits on comes due.
+    /// </summary>
+    public async Task EventuallyAsync(Func<IServiceProvider, Task> assertion, TimeSpan? timeout = null,
+        TimeSpan? advanceClockBy = null)
+    {
+        HostFactory factory = await FactoryAsync();
+        ThrowIfABackgroundServiceCrashed();
+        FakeTimeProvider? clock = advanceClockBy is null ? null : _builder.Clock
+            ?? throw new InvalidOperationException("advanceClockBy needs host.UseFakeClock() in the fixture's Configure.");
+        bool retrying = false;
+        try
+        {
+            await Waiting.UntilAsync(async () =>
+            {
+                if (retrying)
+                {
+                    clock?.Advance(advanceClockBy!.Value);
+                }
+
+                retrying = true;
+                await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+                await assertion(scope.ServiceProvider);
+                return true;
+            }, timeout, giveUp: () => CrashedBackgroundService() is not null);
+        }
+        catch when (CrashedBackgroundService() is not null)
+        {
+            ThrowIfABackgroundServiceCrashed();
+        }
+    }
+
+    /// <inheritdoc cref="EventuallyAsync(Func{IServiceProvider, Task}, TimeSpan?, TimeSpan?)"/>
+    public Task EventuallyAsync(Action<IServiceProvider> assertion, TimeSpan? timeout = null, TimeSpan? advanceClockBy = null) =>
+        EventuallyAsync(services =>
+        {
+            assertion(services);
+            return Task.CompletedTask;
+        }, timeout, advanceClockBy);
 
     /// <summary>
     /// Starts a hosted service the fixture deferred with <c>host.Services.DeferHostedService&lt;T&gt;()</c>, and returns it.
