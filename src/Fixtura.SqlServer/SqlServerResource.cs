@@ -54,6 +54,25 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         return reason;
     }
 
+    /// <summary>
+    /// Empties every table in this fixture's databases, except EF Core's migrations history and
+    /// <see cref="SqlServerOptions.KeepOnReset"/>, and restarts identity columns, so the next test starts from the schema
+    /// the app created.
+    /// </summary>
+    public async Task ResetAsync()
+    {
+        if (_server is null)
+        {
+            return;
+        }
+
+        foreach (string database in await FixtureDatabasesAsync(_server))
+        {
+            string connection = new SqlConnectionStringBuilder(_server) { InitialCatalog = database }.ConnectionString;
+            await SqlServerReset.ResetAsync(connection, options.KeepOnReset);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_server is null)
@@ -110,6 +129,22 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     {
         int stem = namePrefix.LastIndexOf('_') + 1;
         return Like(namePrefix[..stem]) + string.Concat(Enumerable.Repeat("[0-9a-f]", namePrefix.Length - stem)) + "[_]%";
+    }
+
+    private async Task<List<string>> FixtureDatabasesAsync(string server)
+    {
+        await using var connection = new SqlConnection(new SqlConnectionStringBuilder(server) { InitialCatalog = "master" }.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand("SELECT name FROM sys.databases WHERE name LIKE @pattern AND state = 0", connection);
+        command.Parameters.AddWithValue("@pattern", Like(_prefix) + "[_]%");
+        var databases = new List<string>();
+        await using SqlDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            databases.Add(reader.GetString(0));
+        }
+
+        return databases;
     }
 
     private static string Like(string text) => text.Replace("[", "[[]").Replace("_", "[_]").Replace("%", "[%]");

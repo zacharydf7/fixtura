@@ -11,4 +11,10 @@ public interface ITestResource : IAsyncDisposable
     /// the fixture fails instead of skipping.
     /// </summary>
     Task<string?> ProvisionAsync(string namePrefix);
+
+    /// <summary>
+    /// Puts the resource's data back to its starting state for <c>ResetDataAsync</c>, for example by emptying a database's
+    /// tables. Resources with no data to reset keep this default, which does nothing.
+    /// </summary>
+    Task ResetAsync() => Task.CompletedTask;
 }

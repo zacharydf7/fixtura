@@ -99,6 +99,14 @@ public class SkipGateTests(UnavailableFixture api) : IClassFixture<UnavailableFi
         Assert.EndsWith("The test resource is unavailable.", skipped?.Message);
     }
 
+    [Fact]
+    public async Task ResetDataAsync_ShouldSkipWithTheResourcesReason_WhenAResourceIsUnavailable()
+    {
+        TestSkippedException? skipped = await CatchSkipAsync(() => api.ResetDataAsync());
+
+        Assert.EndsWith("The test resource is unavailable.", skipped?.Message);
+    }
+
     private static async Task<TestSkippedException?> CatchSkipAsync(Func<Task> act)
     {
         try

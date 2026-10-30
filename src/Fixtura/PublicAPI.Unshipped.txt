@@ -7,6 +7,7 @@ Fixtura.ITestHostFeature
 Fixtura.ITestHostFeature.Configure(Fixtura.TestHostBuilder! host) -> void
 Fixtura.ITestResource
 Fixtura.ITestResource.ProvisionAsync(string! namePrefix) -> System.Threading.Tasks.Task<string?>!
+Fixtura.ITestResource.ResetAsync() -> System.Threading.Tasks.Task!
 Fixtura.ITestUserSeeder
 Fixtura.ITestUserSeeder.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
 Fixtura.NothingMatchedException
@@ -21,11 +22,13 @@ Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user = null) -> S
 Fixtura.TestHost<TProgram>.CreateScope() -> Microsoft.Extensions.DependencyInjection.IServiceScope!
 Fixtura.TestHost<TProgram>.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Fixtura.TestHost<TProgram>.InitializeAsync() -> System.Threading.Tasks.ValueTask
+Fixtura.TestHost<TProgram>.ResetDataAsync() -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.Services.get -> System.IServiceProvider!
 Fixtura.TestHost<TProgram>.TestHost() -> void
 Fixtura.TestHost<TProgram>.WithOverrides(System.Action<Fixtura.TestHostBuilder!>! configure) -> Fixtura.TestHost<TProgram!>!
 Fixtura.TestHostBuilder
 Fixtura.TestHostBuilder.AddResource<TResource>(TResource resource) -> TResource
+Fixtura.TestHostBuilder.OnReset(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Server.get -> Fixtura.ServerKind
 Fixtura.TestHostBuilder.Server.set -> void

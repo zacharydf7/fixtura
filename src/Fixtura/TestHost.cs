@@ -118,6 +118,28 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     public IServiceScope CreateScope() => Services.CreateScope();
 
     /// <summary>
+    /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,
+    /// then the steps added with <see cref="TestHostBuilder.OnReset"/> run. Call it before a test, never while another
+    /// test uses the same fixture, as tests sharing an assembly fixture can.
+    /// </summary>
+    public Task ResetDataAsync()
+    {
+        if (_skipReason is not null)
+        {
+            throw new TestSkippedException(_skipReason);
+        }
+
+        // Before the host is built the app hasn't run, so only the resources can hold data.
+        HostFactory? factory;
+        lock (_gate)
+        {
+            factory = _factory;
+        }
+
+        return _builder.ResetAsync(factory?.Services);
+    }
+
+    /// <summary>
     /// A second host built from this fixture's recorded steps plus <paramref name="configure"/>. It shares this fixture's
     /// resources and database names, and costs a full host build. Dispose it when the test ends.
     /// </summary>

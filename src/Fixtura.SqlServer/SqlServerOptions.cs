@@ -17,4 +17,10 @@ public sealed class SqlServerOptions
     /// test run, because every later fixture reuses the answer. Must be positive.
     /// </summary>
     public TimeSpan ReadyTimeout { get; init; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Tables whose rows <c>ResetDataAsync</c> keeps, such as reference data the app's migrations insert, as "Table" or
+    /// "schema.Table". EF Core's migrations history is always kept.
+    /// </summary>
+    public IReadOnlyList<string> KeepOnReset { get; init; } = [];
 }

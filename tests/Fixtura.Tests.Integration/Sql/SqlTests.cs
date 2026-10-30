@@ -74,6 +74,25 @@ public class SqlGateTests(ApiSqlFixture api) : IClassFixture<ApiSqlFixture>
     }
 }
 
+public class SqlAppResetTests(ApiSqlFixture api) : IClassFixture<ApiSqlFixture>
+{
+    [Fact]
+    public async Task ResetDataAsync_ShouldEmptyTheAppsTables_WhenTheAppCreatedThem()
+    {
+        using (IServiceScope scope = api.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
+            db.Orders.Add(new Order { Product = "Lamp", Quantity = 2 });
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await api.ResetDataAsync();
+
+        using IServiceScope check = api.CreateScope();
+        Assert.False(await check.ServiceProvider.GetRequiredService<OrdersDbContext>().Orders.AnyAsync(TestContext.Current.CancellationToken));
+    }
+}
+
 [CollectionDefinition(Name)]
 public class ApiWorkerSqlCollection : ICollectionFixture<ApiWorkerSqlFixture>
 {

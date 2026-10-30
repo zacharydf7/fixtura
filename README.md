@@ -10,6 +10,7 @@ by hand:
 - **Settings as objects**, seen by `Program.cs` before `Build()`, where an array replaces the app's array whole.
 - **Test users** signed in through the app's own JWT or cookie authentication, events included.
 - **Infrastructure** that skips tests when it's missing locally and fails them in CI, with no skip call in any test.
+- **Data resets** between tests that share a fixture, without recreating databases.
 
 **Status:** pre-release. Nothing is published to nuget.org yet.
 
@@ -186,6 +187,31 @@ host.Services.ReplaceDbContext<OrdersDbContext>(db => db.UseSqlServer(sql.Databa
   positive. A LocalDB instance that isn't running yet can need longer on its first connection. The server is checked
   once per test run, so an unreachable one costs the timeout once, not once per fixture.
 - Databases that a killed test run left behind are dropped once they're an hour old.
+
+## Resetting data between tests
+
+Tests that share a fixture also share its data. Reset it before each test that needs a clean start:
+
+```csharp
+public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifetime
+{
+    public async ValueTask InitializeAsync() => await api.ResetDataAsync();
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}
+```
+
+- The SQL Server resource empties every table in the fixture's databases, in foreign-key order, and restarts identity
+  columns. The schema stays, so the app doesn't migrate again. System-versioned tables lose their history too. EF Core's
+  migrations history keeps its rows, and so do the tables in `SqlServerOptions.KeepOnReset`; list reference data the app
+  inserts there.
+- `host.RecreateInMemoryDatabasesOnReset()`, from `Fixtura.EntityFrameworkCore`, deletes and recreates every EF Core
+  in-memory database, so only data seeded with `HasData` is left.
+- `host.OnReset(services => ...)` adds a step of your own, such as clearing what a fake recorded. Steps run after the
+  resources reset, once the host has been built. A custom `ITestResource` resets its data in `ResetAsync`.
+- Test users are seeded again at their next sign-in.
+- Never reset while another test uses the fixture. Tests sharing a class or collection fixture run one at a time, but
+  tests sharing an assembly fixture can run in parallel.
 
 ## Kestrel and per-test overrides
 

@@ -12,8 +12,10 @@ public sealed class TestHostBuilder
     private readonly HashSet<Type> _features = [];
     private readonly List<ITestResource> _resources = [];
     private readonly List<Action<IServiceCollection>> _serviceSteps = [];
+    private readonly List<Func<IServiceProvider, Task>> _resetSteps = [];
     private readonly SettingsOverlay _settings = new();
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
+    private readonly TestHostBuilder? _parent;
 
     internal TestHostBuilder()
     {
@@ -23,8 +25,10 @@ public sealed class TestHostBuilder
     // A copy for WithOverrides: the parent's steps, settings and names, but none of its resources, which the parent owns.
     private TestHostBuilder(TestHostBuilder parent) : this()
     {
+        _parent = parent;
         _features.UnionWith(parent._features);
         _serviceSteps.AddRange(parent._serviceSteps);
+        _resetSteps.AddRange(parent._resetSteps);
         _settings.Merge(parent._settings);
         _namePrefix = parent._namePrefix;
         IsOverride = true;
@@ -98,6 +102,16 @@ public sealed class TestHostBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a step that <c>ResetDataAsync</c> runs against the app's services after the resources have reset, such as
+    /// clearing what a fake recorded. Steps run in the order they are added, and only once the host has been built.
+    /// </summary>
+    public TestHostBuilder OnReset(Func<IServiceProvider, Task> reset)
+    {
+        _resetSteps.Add(reset);
+        return this;
+    }
+
     /// <summary>A name no other fixture instance uses, for in-memory databases and similar shared stores.</summary>
     public string UniqueName(string name) => $"{_namePrefix}_{name}";
 
@@ -136,6 +150,25 @@ public sealed class TestHostBuilder
 
             Users.Apply(services);
         });
+    }
+
+    // An override resets its parent's resources, because it shares their data.
+    internal async Task ResetAsync(IServiceProvider? services)
+    {
+        foreach (ITestResource resource in (_parent ?? this)._resources)
+        {
+            await resource.ResetAsync();
+        }
+
+        if (services is null)
+        {
+            return;
+        }
+
+        foreach (Func<IServiceProvider, Task> step in _resetSteps)
+        {
+            await step(services);
+        }
     }
 
     internal async Task DisposeResourcesAsync()
