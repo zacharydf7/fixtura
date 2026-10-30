@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
@@ -24,6 +25,10 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     private readonly List<BackgroundService> _watched = [];
     private Task<HostFactory>? _build;
     private string? _skipReason;
+    private int _disposed;
+
+    // Every host from WithOverrides, disposed with the fixture; disposing one a test already disposed does nothing.
+    private readonly List<TestHost<TProgram>> _overrides = [];
 
     protected TestHost()
     {
@@ -142,7 +147,30 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         Configure(_builder);
         _builder.EndConfigure();
         _skipReason = await _builder.ProvisionAsync();
+        if (_skipReason is null)
+        {
+            await OnInitializedAsync();
+        }
     }
+
+    /// <summary>
+    /// Runs once the fixture is configured and its resources are provisioned, before its first test; the host isn't built
+    /// yet. Override it for setup of the fixture's own, such as reading a resource. It doesn't run when a resource is
+    /// unavailable and the fixture's tests are skipped.
+    /// </summary>
+    protected virtual ValueTask OnInitializedAsync() => ValueTask.CompletedTask;
+
+    /// <summary>Runs as the fixture is disposed, before the app and its resources are. Override it for cleanup of its own.</summary>
+    protected virtual ValueTask OnDisposingAsync() => ValueTask.CompletedTask;
+
+    /// <summary>The fake the fixture set up in <c>Configure</c> for the named client.</summary>
+    public HttpFake HttpFake(string clientName) => _builder.Http.Find(clientName);
+
+    /// <summary>The fake the fixture set up in <c>Configure</c> for the typed client.</summary>
+    public HttpFake HttpFake<TClient>() where TClient : class => _builder.Http.Find<TClient>();
+
+    /// <summary>The one resource of this type the fixture added in <c>Configure</c>, such as its database server.</summary>
+    public TResource Resource<TResource>() where TResource : ITestResource => _builder.FindResource<TResource>();
 
     /// <summary>
     /// A client signed in as the user through the app's own authentication, or anonymous when no user is given.
@@ -193,6 +221,14 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
             return client;
         }
+    }
+
+    /// <summary>A scope for resolving scoped services, building the host without blocking a thread. Dispose it with await using.</summary>
+    public async Task<AsyncServiceScope> CreateScopeAsync()
+    {
+        HostFactory factory = await FactoryAsync();
+        ThrowIfABackgroundServiceCrashed();
+        return factory.Services.CreateAsyncScope();
     }
 
     public IServiceScope CreateScope()
@@ -293,20 +329,60 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     /// <summary>
     /// A second host built from this fixture's recorded steps plus <paramref name="configure"/>. It shares this fixture's
-    /// resources and database names, and costs a full host build. Dispose it when the test ends.
+    /// resources and database names, and costs a full host build. Dispose it when the test ends; the fixture disposes any
+    /// that are still running when it is.
     /// </summary>
     public TestHost<TProgram> WithOverrides(Action<TestHostBuilder> configure)
     {
         TestHostBuilder copy = _builder.CopyForOverrides();
         configure(copy);
         copy.EndConfigure();
-        return new OverrideHost(copy, _skipReason);
+        var overridden = new OverrideHost(copy, _skipReason);
+        lock (_gate)
+        {
+            _overrides.Add(overridden);
+        }
+
+        return overridden;
     }
 
     public async ValueTask DisposeAsync()
     {
-        // The app goes first, so it has closed its connections before resources such as databases are dropped, and the
-        // resources go even if the app fails to shut down.
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+        {
+            return;
+        }
+
+        List<TestHost<TProgram>> overrides;
+        lock (_gate)
+        {
+            overrides = [.. _overrides];
+        }
+
+        // The fixture's cleanup, overrides and the app go first, so they have closed their connections before resources
+        // such as databases are dropped. Each step runs even if an earlier one fails, and the failures are thrown after.
+        List<Exception> errors = [];
+        try
+        {
+            await OnDisposingAsync();
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+
+        foreach (TestHost<TProgram> overridden in overrides)
+        {
+            try
+            {
+                await overridden.DisposeAsync();
+            }
+            catch (Exception error)
+            {
+                errors.Add(error);
+            }
+        }
+
         try
         {
             if (_build is { IsCompletedSuccessfully: true })
@@ -320,6 +396,16 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         }
 
         GC.SuppressFinalize(this);
+        if (errors.Count == 1)
+        {
+            ExceptionDispatchInfo.Throw(errors[0]);
+        }
+
+        if (errors.Count > 1)
+        {
+            throw new AggregateException(errors);
+        }
+
         ThrowIfABackgroundServiceCrashed();
     }
 

@@ -12,11 +12,12 @@ namespace Fixtura;
 public sealed class TestHostBuilder
 {
     private readonly HashSet<Type> _features = [];
+    private readonly HashSet<ITestHostFeature> _featureInstances = new(ReferenceEqualityComparer.Instance);
     private readonly List<ITestResource> _resources = [];
     private readonly List<Action<IServiceCollection>> _serviceSteps = [];
     private readonly List<Func<IServiceProvider, Task>> _resetSteps = [];
     private readonly List<Action<IWebHostBuilder>> _webHostSteps = [];
-    private readonly SettingsOverlay _settings = new();
+    private readonly List<Func<SettingsOverlay>> _settings = [];
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
     private readonly TestHostBuilder? _parent;
     private LogLevel? _testOutputLevel;
@@ -33,11 +34,12 @@ public sealed class TestHostBuilder
     {
         _parent = parent._parent ?? parent;
         _features.UnionWith(parent._features);
+        _featureInstances.UnionWith(parent._featureInstances);
         _serviceSteps.AddRange(parent._serviceSteps);
         _resetSteps.AddRange(parent._resetSteps);
         _webHostSteps.AddRange(parent._webHostSteps);
         Environment = parent.Environment;
-        _settings.Merge(parent._settings);
+        _settings.AddRange(parent._settings);
         _namePrefix = parent._namePrefix;
         IsOverride = true;
         Users = parent.Users.Copy();
@@ -76,6 +78,19 @@ public sealed class TestHostBuilder
     internal bool LogsToTestOutput => _testOutputLevel is not null;
 
     /// <summary>
+    /// Adds a feature instance, such as one that takes settings of its own. Adding the same instance twice runs it once.
+    /// </summary>
+    public TestHostBuilder Use(ITestHostFeature feature)
+    {
+        if (_featureInstances.Add(feature))
+        {
+            feature.Configure(this);
+        }
+
+        return this;
+    }
+
+    /// <summary>
     /// Adds a reusable feature. Adding the same feature twice runs it once, so features can build on each other.
     /// </summary>
     public TestHostBuilder Use<TFeature>() where TFeature : ITestHostFeature, new()
@@ -110,14 +125,27 @@ public sealed class TestHostBuilder
     /// </summary>
     public TestHostBuilder Settings(object settings)
     {
-        _settings.Merge(SettingsOverlay.FromObject(settings));
+        SettingsOverlay overlay = SettingsOverlay.FromObject(settings);
+        _settings.Add(() => overlay);
         return this;
     }
 
     /// <summary>Overrides settings with JSON shaped like appsettings.json; comments and trailing commas are allowed.</summary>
     public TestHostBuilder Settings(string json)
     {
-        _settings.Merge(SettingsOverlay.FromJson(json));
+        SettingsOverlay overlay = SettingsOverlay.FromJson(json);
+        _settings.Add(() => overlay);
+        return this;
+    }
+
+    /// <summary>
+    /// Overrides settings with an object made when the host is built, after the fixture's resources are provisioned, so it
+    /// can hold what they provide, such as <c>new { ConnectionStrings = new { Main = sql.Database("Main") } }</c>.
+    /// Otherwise like <see cref="Settings(object)"/>, in the same order as the other calls.
+    /// </summary>
+    public TestHostBuilder Settings(Func<object> settings)
+    {
+        _settings.Add(() => SettingsOverlay.FromObject(settings()));
         return this;
     }
 
@@ -240,13 +268,20 @@ public sealed class TestHostBuilder
             web.UseEnvironment(Environment);
         }
 
+        // Made now, once the fixture's resources are provisioned, in the order the calls were made.
+        var settings = new SettingsOverlay();
+        foreach (Func<SettingsOverlay> overlay in _settings)
+        {
+            settings.Merge(overlay());
+        }
+
         // Host settings become Program.Main arguments, the only configuration an eager read in Program.cs can see.
-        foreach (KeyValuePair<string, string?> setting in _settings.Values)
+        foreach (KeyValuePair<string, string?> setting in settings.Values)
         {
             web.UseSetting(setting.Key, setting.Value);
         }
 
-        web.ConfigureAppConfiguration(ApplyLateSettings);
+        web.ConfigureAppConfiguration((_, configuration) => ApplyLateSettings(settings, configuration));
         web.ConfigureTestServices(services =>
         {
             foreach (Action<IServiceCollection> step in _serviceSteps)
@@ -302,16 +337,28 @@ public sealed class TestHostBuilder
         }
     }
 
-    private void ApplyLateSettings(WebHostBuilderContext context, IConfigurationBuilder configuration)
+    private static void ApplyLateSettings(SettingsOverlay settings, IConfigurationBuilder configuration)
     {
-        if (_settings.ArrayPaths.Count > 0)
+        if (settings.ArrayPaths.Count > 0)
         {
             for (int i = 0; i < configuration.Sources.Count; i++)
             {
-                configuration.Sources[i] = new HiddenSectionsSource(configuration.Sources[i], _settings.ArrayPaths);
+                configuration.Sources[i] = new HiddenSectionsSource(configuration.Sources[i], settings.ArrayPaths);
             }
         }
 
-        configuration.AddInMemoryCollection(_settings.Values);
+        configuration.AddInMemoryCollection(settings.Values);
+    }
+
+    internal TResource FindResource<TResource>() where TResource : ITestResource
+    {
+        List<TResource> found = (_parent ?? this)._resources.OfType<TResource>().ToList();
+        return found.Count switch
+        {
+            1 => found[0],
+            0 => throw new InvalidOperationException($"The fixture added no {typeof(TResource).Name} in Configure."),
+            _ => throw new InvalidOperationException($"The fixture added {found.Count} of {typeof(TResource).Name}; keep a "
+                + "reference to the one you need from Configure instead.")
+        };
     }
 }

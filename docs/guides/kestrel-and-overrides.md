@@ -22,4 +22,5 @@ fixture's recorded changes plus a few more:
 - The override shares the fixture's resources and database names, so it sees the same data.
 - It can't add resources; add them in the fixture's `Configure`.
 - Each override costs a full host build. Dispose it with `await using`, and keep overrides for the few tests that need
-  them; a shape many tests need deserves its own fixture.
+  them; a shape many tests need deserves its own fixture. The fixture disposes any override still running when it's
+  disposed itself.

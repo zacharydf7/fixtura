@@ -35,6 +35,18 @@ A feature is setup that several fixtures share. Implement `ITestHostFeature` and
 Adding the same feature twice runs it once. That lets one feature use another, and lets a fixture add both without
 caring that one already includes the other.
 
+A feature that takes settings of its own is added as an instance: `host.Use(new TenantFeature("north"))`. The same
+instance added twice runs once.
+
+## Fixture hooks
+
+A fixture can override two hooks for setup and cleanup of its own:
+
+- `OnInitializedAsync` runs once `Configure` has run and the resources are provisioned, before the first test. The host
+  isn't built yet, and it doesn't run when an unavailable resource skips the fixture's tests.
+- `OnDisposingAsync` runs as the fixture is disposed, before the app and its resources are. If it throws, the app and
+  the resources are still disposed, and the error is thrown after.
+
 ## What a fixture offers tests
 
 | Member | What it does |
@@ -43,6 +55,9 @@ caring that one already includes the other.
 | `CreateClientAsync(user, options)` | The same, built with `TestClientOptions`; see below |
 | `Services` | The app's root services |
 | `CreateScope()` | A scope for resolving scoped services such as a DbContext |
+| `CreateScopeAsync()` | The same, built without blocking a thread; dispose it with `await using` |
+| `HttpFake(name)`, `HttpFake<TClient>()` | The fake the fixture set up for that client |
+| `Resource<TResource>()` | The one resource of that type the fixture added, such as its `SqlServerResource` |
 | `EventuallyAsync(services => ...)` | Runs an assertion in a new scope until it passes, for work the app finishes later; see below |
 | `StartHostedServiceAsync<T>()` | Starts a hosted service the fixture deferred; see [Swapping services](service-swaps.md) |
 | `ResetDataAsync()` | Puts the fixture's data back to its starting state; see [Resetting data](resetting-data.md) |

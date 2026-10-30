@@ -82,6 +82,14 @@ public sealed class ApiFixture : TestHost<Program>
 }
 ```
 
+A feature that takes settings of its own is added as an instance, `host.Use(new TenantFeature("north"))`; the same
+instance added twice runs once.
+
+A test reaches what the fixture set up without a property for each: `api.HttpFake("rates")`, `api.HttpFake<TClient>()`
+and `api.Resource<SqlServerResource>()`. A fixture can override `OnInitializedAsync`, which runs once its resources are
+provisioned, and `OnDisposingAsync`, which runs before the app and its resources are disposed. `await
+api.CreateScopeAsync()` builds the host without blocking a thread.
+
 ## Swapping services
 
 | Call | What it does |
@@ -178,6 +186,8 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
 
 - `Settings` takes an object or JSON shaped like appsettings.json. JSON may contain comments and trailing commas, and
   enums are written by name.
+- `Settings(() => new { ... })` makes its object when the host is built, after the fixture's resources are provisioned,
+  so it can hold what they provide: `host.Settings(() => new { ConnectionStrings = new { Main = sql.Database("Main") } })`.
 - Settings reach `Program.cs` before `builder.Build()`, so code that reads configuration early sees them. After
   `Build()` they win over every app source.
 - An array in the overlay replaces the app's array whole, so a 3-entry list in appsettings.json becomes the 1 entry you

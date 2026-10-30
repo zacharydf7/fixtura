@@ -7,7 +7,9 @@
 - `Options<TOptions>(...)` changes the bound options after the app's own configuration and post-configuration, which
   suits typed lists. It reaches every instance, named or not, such as each authentication scheme's or each HTTP
   client's; `Options<TOptions>(name, ...)` changes only the one with that name.
-- Later calls win, key by key.
+- `Settings(() => new { ... })` makes its object when the host is built, once the fixture's resources are provisioned,
+  so it can hold what they provide, such as a database's connection string for code that reads it from configuration.
+- Later calls win, key by key, whichever kind they are.
 
 ## The environment
 

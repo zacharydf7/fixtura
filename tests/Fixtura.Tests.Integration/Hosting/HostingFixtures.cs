@@ -103,9 +103,15 @@ public sealed class OrderedResource(string name, List<string> provisioned) : ITe
 
 public sealed class RecordingResource : ITestResource
 {
+    public bool Provisioned { get; private set; }
+
     public bool Disposed { get; private set; }
 
-    public Task<string?> ProvisionAsync(string namePrefix) => Task.FromResult<string?>(null);
+    public Task<string?> ProvisionAsync(string namePrefix)
+    {
+        Provisioned = true;
+        return Task.FromResult<string?>(null);
+    }
 
     public ValueTask DisposeAsync()
     {

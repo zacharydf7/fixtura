@@ -12,16 +12,24 @@ Fixtura.TestClientOptions.Scheme.init -> void
 Fixtura.TestClientOptions.TestClientOptions() -> void
 Fixtura.TestHost<TProgram>.Clock.get -> Microsoft.Extensions.Time.Testing.FakeTimeProvider!
 Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
+Fixtura.TestHost<TProgram>.CreateScopeAsync() -> System.Threading.Tasks.Task<Microsoft.Extensions.DependencyInjection.AsyncServiceScope>!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Action<System.IServiceProvider!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
+Fixtura.TestHost<TProgram>.HttpFake(string! clientName) -> Fixtura.HttpFake!
+Fixtura.TestHost<TProgram>.HttpFake<TClient>() -> Fixtura.HttpFake!
+Fixtura.TestHost<TProgram>.Resource<TResource>() -> TResource
 Fixtura.TestHost<TProgram>.StartHostedServiceAsync<THostedService>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<THostedService!>!
 Fixtura.TestHostBuilder.Environment.get -> string?
 Fixtura.TestHostBuilder.Environment.set -> void
 Fixtura.TestHostBuilder.FailOnBackgroundServiceCrash() -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
+Fixtura.TestHostBuilder.Settings(System.Func<object!>! settings) -> Fixtura.TestHostBuilder!
+Fixtura.TestHostBuilder.Use(Fixtura.ITestHostFeature! feature) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.UseFakeClock(System.DateTimeOffset? start = null) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestServices.DeferHostedService<THostedService>() -> Fixtura.TestServices!
 Fixtura.TestUsers.Scheme.get -> string?
 Fixtura.TestUsers.Scheme.set -> void
+virtual Fixtura.TestHost<TProgram>.OnDisposingAsync() -> System.Threading.Tasks.ValueTask
+virtual Fixtura.TestHost<TProgram>.OnInitializedAsync() -> System.Threading.Tasks.ValueTask

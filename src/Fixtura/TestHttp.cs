@@ -56,6 +56,25 @@ public sealed class TestHttp
         return Fake(typeof(TClient).Name);
     }
 
+    internal HttpFake Find(string clientName) => Find(clientName, $"host.Http.Fake(\"{clientName}\")");
+
+    internal HttpFake Find<TClient>() where TClient : class
+    {
+        if (typeof(TClient).IsGenericType)
+        {
+            throw new ArgumentException(
+                $"{typeof(TClient).Name} is generic, so its client name isn't its type name; use HttpFake(name) with the name it was registered under.");
+        }
+
+        return Find(typeof(TClient).Name, $"host.Http.Fake<{typeof(TClient).Name}>()");
+    }
+
+    private HttpFake Find(string clientName, string setup) =>
+        _fakes.TryGetValue(clientName, out HttpFake? fake)
+            ? fake
+            : throw new InvalidOperationException(
+                $"The fixture fakes no client named '{clientName}'; fake it in Configure with {setup}.");
+
     // Shares the fakes, which a test reads through the fixture, until the override fakes a client again.
     internal TestHttp Copy()
     {
