@@ -41,6 +41,7 @@ Fixtura.TestHost<TProgram>.WithOverrides(System.Action<Fixtura.TestHostBuilder!>
 Fixtura.TestHostBuilder
 Fixtura.TestHostBuilder.AddResource<TResource>(TResource resource) -> TResource
 Fixtura.TestHostBuilder.Http.get -> Fixtura.TestHttp!
+Fixtura.TestHostBuilder.LogToTestOutput(Microsoft.Extensions.Logging.LogLevel minimumLevel = Microsoft.Extensions.Logging.LogLevel.Information) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.OnReset(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Server.get -> Fixtura.ServerKind

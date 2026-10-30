@@ -67,6 +67,12 @@ app.MapPost("/orders", async (PlaceOrderRequest request, OrdersDbContext db, IOr
     return Results.Created($"/orders/{order.Id}", order);
 }).RequireAuthorization(policy => policy.RequireRole("Manager"));
 
+app.MapGet("/ping", (ILogger<Program> logger) =>
+{
+    logger.LogInformation("Pinged.");
+    return "pong";
+});
+
 app.MapGet("/carriers", (IOptions<ShippingOptions> shipping) => shipping.Value.Carriers.Select(carrier => carrier.Name));
 
 app.MapGet("/payments/{method}", (string method, IServiceProvider services) =>

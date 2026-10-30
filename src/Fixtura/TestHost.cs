@@ -55,13 +55,28 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             {
                 if (_factory is null)
                 {
-                    var factory = new HostFactory(_builder.Apply);
+                    // Taken on the test's thread: the app builds on a thread of its own, outside any test.
+                    Action<string> sendDiagnosticMessage = TestContext.Current.SendDiagnosticMessage;
+                    var factory = new HostFactory(web => _builder.Apply(web, sendDiagnosticMessage));
                     if (_builder.Server == ServerKind.Kestrel)
                     {
                         factory.UseKestrel(0);
                     }
 
-                    _ = factory.Services;
+                    if (_builder.LogsToTestOutput && !ExecutionContext.IsFlowSuppressed())
+                    {
+                        // The host outlives this test, so its background work mustn't carry this test's context and
+                        // send logs to its output.
+                        using (ExecutionContext.SuppressFlow())
+                        {
+                            _ = factory.Services;
+                        }
+                    }
+                    else
+                    {
+                        _ = factory.Services;
+                    }
+
                     _factory = factory;
                 }
 

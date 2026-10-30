@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fixtura;
 
@@ -16,6 +17,7 @@ public sealed class TestHostBuilder
     private readonly SettingsOverlay _settings = new();
     private readonly string _namePrefix = "fixtura_" + Guid.NewGuid().ToString("N")[..8];
     private readonly TestHostBuilder? _parent;
+    private LogLevel? _testOutputLevel;
 
     internal TestHostBuilder()
     {
@@ -35,6 +37,7 @@ public sealed class TestHostBuilder
         Users = parent.Users.Copy();
         Http = parent.Http.Copy();
         Server = parent.Server;
+        _testOutputLevel = parent._testOutputLevel;
     }
 
     /// <summary>Typed swaps of the app's service registrations.</summary>
@@ -50,6 +53,8 @@ public sealed class TestHostBuilder
     public ServerKind Server { get; set; } = ServerKind.TestServer;
 
     internal bool IsOverride { get; }
+
+    internal bool LogsToTestOutput => _testOutputLevel is not null;
 
     /// <summary>
     /// Adds a reusable feature. Adding the same feature twice runs it once, so features can build on each other.
@@ -116,6 +121,19 @@ public sealed class TestHostBuilder
         return this;
     }
 
+    /// <summary>
+    /// Writes the app's logs to the output of the test whose request caused them, which xUnit shows when the test fails.
+    /// The app's own logging settings still filter them, and <paramref name="minimumLevel"/> raises the floor. Each request
+    /// runs in its test's execution context, so the test's culture and other ambient state reach the app. Logs that belong
+    /// to no test, such as start-up's, a background service's or a request's over Kestrel, become xUnit diagnostic
+    /// messages.
+    /// </summary>
+    public TestHostBuilder LogToTestOutput(LogLevel minimumLevel = LogLevel.Information)
+    {
+        _testOutputLevel = minimumLevel;
+        return this;
+    }
+
     /// <summary>A name no other fixture instance uses, for in-memory databases and similar shared stores.</summary>
     public string UniqueName(string name) => $"{_namePrefix}_{name}";
 
@@ -136,7 +154,7 @@ public sealed class TestHostBuilder
         return null;
     }
 
-    internal void Apply(IWebHostBuilder web)
+    internal void Apply(IWebHostBuilder web, Action<string> sendDiagnosticMessage)
     {
         // Host settings become Program.Main arguments, the only configuration an eager read in Program.cs can see.
         foreach (KeyValuePair<string, string?> setting in _settings.Values)
@@ -154,6 +172,10 @@ public sealed class TestHostBuilder
 
             Users.Apply(services);
             Http.Apply(services);
+            if (_testOutputLevel is LogLevel level)
+            {
+                TestOutputLoggerProvider.AddTo(services, level, sendDiagnosticMessage);
+            }
         });
     }
 

@@ -12,6 +12,7 @@ by hand:
 - **Infrastructure** that skips tests when it's missing locally and fails them in CI, with no skip call in any test.
 - **Data resets** between tests that share a fixture, without recreating databases.
 - **HTTP fakes** for the app's outbound clients, which record what the app sent.
+- **The app's logs** in the output of the test that caused them.
 
 **Status:** pre-release. Nothing is published to nuget.org yet.
 
@@ -186,6 +187,19 @@ Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
   network. Clients the app creates with `new HttpClient()` can't be faked.
 - `ResetDataAsync` clears the recorded requests and brings back the responses set in `Configure`, undoing ones a test
   set. In `WithOverrides`, faking a client again replaces the fixture's fake for that host only.
+
+## The app's logs
+
+```csharp
+host.LogToTestOutput();                 // Information and above
+host.LogToTestOutput(LogLevel.Warning); // or a higher minimum
+```
+
+- Each request's logs go to the output of the test that sent it, which xUnit shows when the test fails, so a 500 comes
+  with the app's reason. The app's own `Logging` settings still filter them; change them for tests with `host.Settings`.
+- Each request runs in its test's execution context, so the test's culture and other ambient state reach the app.
+- Logs that belong to no test, such as start-up's, a background service's or those of a request over Kestrel, become
+  xUnit diagnostic messages, which show when diagnostic messages are turned on.
 
 ## Missing infrastructure
 
