@@ -74,3 +74,8 @@ Users the seeder created are gone after a reset of their store, and they're seed
 
 Never reset while another test uses the fixture. Tests sharing a class or collection fixture run one at a time, but
 tests sharing an assembly fixture can run in parallel.
+
+xUnit 4.0's `parallelMode: all`, set in `xunit.runner.json`, on the command line or with
+`[assembly: Parallelization(Mode = ParallelMode.All)]`, runs tests in the same class in parallel too. A class whose tests
+reset a shared fixture then needs them run one at a time again: mark it `[TestClass(DisableParallelism = true)]`. Fixtura
+can't tell which mode is on, so it can't warn you; a reset under a running test shows up as data that vanishes mid-test.

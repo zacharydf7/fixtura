@@ -22,7 +22,7 @@ Fixtures are ordinary xUnit fixtures:
 
 - `IClassFixture<TFixture>` shares one host among the tests in one class.
 - `ICollectionFixture<TFixture>` shares it among the classes in a collection. Tests in one collection run one at a
-  time.
+  time, unless xUnit 4.0's `parallelMode: all` is on; see [Resetting data](resetting-data.md#when-not-to-reset).
 - xUnit v3's `AssemblyFixture` shares it with the whole test assembly. Tests in different collections can then use it in
   parallel, so don't reset its data while they run; see [Resetting data](resetting-data.md).
 

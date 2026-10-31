@@ -450,7 +450,8 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>, IAsyncLifet
   `ResetAsync`.
 - Test users are seeded again at their next sign-in.
 - Never reset while another test uses the fixture. Tests sharing a class or collection fixture run one at a time, but
-  tests sharing an assembly fixture can run in parallel.
+  tests sharing an assembly fixture can run in parallel. xUnit 4.0's `parallelMode: all` runs a class's tests in
+  parallel too; mark a class that resets a shared fixture `[TestClass(DisableParallelism = true)]`.
 
 ## Kestrel and per-test overrides
 
