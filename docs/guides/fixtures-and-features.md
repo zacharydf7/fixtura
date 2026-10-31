@@ -70,6 +70,8 @@ A fixture can override two hooks for setup and cleanup of its own:
 | `Recorder<TService>()` | The calls the app made on a service the fixture records; see [Swapping services](service-swaps.md) |
 | `ReadAsync<T>(response)` | The response's JSON body, read with the app's own JSON options; see below |
 | `ReadProblemAsync(response, status)` | The problem details of a response with that status, such as a validation failure's |
+| `ChangeSettingsAsync(...)` | Changes settings while the host runs; see [Settings](settings.md) |
+| `Endpoints.AllowingAnonymousAsync()` | The endpoints a request reaches without signing in; see [Test users](test-users.md) |
 
 ## Reading responses
 
