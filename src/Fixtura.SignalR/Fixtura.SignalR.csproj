@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SignalR for Fixtura test hosts: a hub connection signed in as a test user through the app's own authentication, on the test server or Kestrel, and the messages a hub sends a client, for a test to wait for and assert on.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <!-- Not released yet, so there is no earlier version to validate against. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The oldest without the high-severity advisory GHSA-334f-vvp4-7g6p in SignalR.Common, which fails the restore. -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
+  </ItemGroup>
+
+</Project>

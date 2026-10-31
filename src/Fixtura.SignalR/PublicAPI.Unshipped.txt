@@ -1,0 +1,11 @@
+#nullable enable
+Fixtura.HubMessages<TMessage>
+Fixtura.HubMessages<TMessage>.Received.get -> System.Collections.Generic.IReadOnlyList<TMessage>!
+Fixtura.HubMessages<TMessage>.WaitForAsync(System.Func<TMessage, bool>? match = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<TMessage>!
+Fixtura.SignalRTestHostExtensions
+Fixtura.SignalRTestHostExtensions.extension(Microsoft.AspNetCore.SignalR.Client.HubConnection!)
+Fixtura.SignalRTestHostExtensions.extension(Microsoft.AspNetCore.SignalR.Client.HubConnection!).Record<TMessage>(string! method) -> Fixtura.HubMessages<TMessage>!
+Fixtura.SignalRTestHostExtensions.extension<TProgram>(Fixtura.TestHost<TProgram!>!)
+Fixtura.SignalRTestHostExtensions.extension<TProgram>(Fixtura.TestHost<TProgram!>!).CreateHubConnectionAsync(string! path, Fixtura.TestUser? user = null, System.Action<Microsoft.AspNetCore.SignalR.Client.IHubConnectionBuilder!>? configure = null) -> System.Threading.Tasks.Task<Microsoft.AspNetCore.SignalR.Client.HubConnection!>!
+static Fixtura.SignalRTestHostExtensions.CreateHubConnectionAsync<TProgram>(this Fixtura.TestHost<TProgram!>! api, string! path, Fixtura.TestUser? user = null, System.Action<Microsoft.AspNetCore.SignalR.Client.IHubConnectionBuilder!>? configure = null) -> System.Threading.Tasks.Task<Microsoft.AspNetCore.SignalR.Client.HubConnection!>!
+static Fixtura.SignalRTestHostExtensions.Record<TMessage>(this Microsoft.AspNetCore.SignalR.Client.HubConnection! connection, string! method) -> Fixtura.HubMessages<TMessage>!

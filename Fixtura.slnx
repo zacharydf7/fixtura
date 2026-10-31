@@ -7,6 +7,7 @@
     <Project Path="src/Fixtura.EntityFrameworkCore/Fixtura.EntityFrameworkCore.csproj" />
     <Project Path="src/Fixtura.PostgreSql.Testcontainers/Fixtura.PostgreSql.Testcontainers.csproj" />
     <Project Path="src/Fixtura.PostgreSql/Fixtura.PostgreSql.csproj" />
+    <Project Path="src/Fixtura.SignalR/Fixtura.SignalR.csproj" />
     <Project Path="src/Fixtura.Sqlite/Fixtura.Sqlite.csproj" />
     <Project Path="src/Fixtura.SqlServer/Fixtura.SqlServer.csproj" />
     <Project Path="src/Fixtura.SqlServer.Testcontainers/Fixtura.SqlServer.Testcontainers.csproj" />

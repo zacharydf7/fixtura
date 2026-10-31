@@ -54,6 +54,7 @@ A fixture can override two hooks for setup and cleanup of its own:
 | `CreateClientAsync(user?)` | A client for the app, signed in as the user or anonymous |
 | `CreateClientAsync(user, options)` | The same, built with `TestClientOptions`; see below |
 | `CreateHandlerAsync(user?)` | A handler for the app, signed in as the user, for clients that take one, such as SignalR's |
+| `ClientAddress` | Where the fixture's own clients send requests; pair it with a handler from `CreateHandlerAsync` |
 | `SignInAsync(user)` | The user's bearer token or cookie, for a client the fixture doesn't build, such as a browser on Kestrel |
 | `Services` | The app's root services |
 | `CreateScope()` | A scope for resolving scoped services such as a DbContext |

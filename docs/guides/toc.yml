@@ -18,6 +18,8 @@
     href: http-fakes.md
   - name: The app's logs
     href: logs.md
+  - name: SignalR
+    href: signalr.md
   - name: Kestrel and per-test overrides
     href: kestrel-and-overrides.md
 - name: Data

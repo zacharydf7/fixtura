@@ -25,10 +25,12 @@ dotnet add package Fixtura.SqlServer
 dotnet add package Fixtura.SqlServer.Testcontainers
 dotnet add package Fixtura.PostgreSql
 dotnet add package Fixtura.PostgreSql.Testcontainers
+dotnet add package Fixtura.SignalR
 ```
 
 `Fixtura` is the core. Add the others when the app uses EF Core, when tests need a relational database without a
-server, when they need a real SQL Server or PostgreSQL, and when that server should run in Docker.
+server, when they need a real SQL Server or PostgreSQL, when that server should run in Docker, and when tests talk to
+the app's SignalR hubs.
 
 ## A fixture per host shape
 
@@ -223,9 +225,9 @@ HttpClient noRedirects = await api.CreateClientAsync(null, new TestClientOptions
 ```
 
 `TestClientOptions` also sets a client's `BaseAddress`, its own `DelegatingHandler`s and the `Scheme` its user signs in
-through. For clients the fixture doesn't build, `api.CreateHandlerAsync(user)` returns a signed-in handler, such as for
-SignalR's `HttpMessageHandlerFactory`, and `api.SignInAsync(user)` returns the user's `BearerToken` or `Cookie`, such as
-for a WebSocket or a browser, which connect to `api.BaseAddress` on `ServerKind.Kestrel`.
+through. For clients the fixture doesn't build, `api.CreateHandlerAsync(user)` returns a signed-in handler that reaches
+`api.ClientAddress`, such as for a gRPC channel, and `api.SignInAsync(user)` returns the user's `BearerToken` or
+`Cookie`, such as for a WebSocket or a browser, which connect to `api.BaseAddress` on `ServerKind.Kestrel`.
 
 The user signs in through the app's own authentication handler, so its token or cookie events and account checks still
 run, through the app's default authenticate scheme unless `host.Users.Scheme` names another, as an app whose default
@@ -249,6 +251,17 @@ claims, and returns the claims Identity signs in. A role or claim that an earlie
 doesn't ask for it, so a user that one test made a `Manager` is a plain user again in the next. Roles and claims the app
 gave the user stay. Override `NewUser` to set your own fields on a user it creates, or implement `ITestUserSeeder` for
 any other store.
+
+### SignalR hubs
+
+```csharp
+await using HubConnection hub = await api.CreateHubConnectionAsync("/hubs/jobs", TestUser.Named("ann"));
+HubMessages<JobUpdate> updates = hub.Record<JobUpdate>("JobUpdated");
+await hub.StartAsync();
+```
+
+`Fixtura.SignalR` connects through the fixture's own handler, signed in as the user, on the test server or Kestrel.
+`Record<T>(method)` keeps what the hub sends that client method, and `WaitForAsync(message => ...)` waits for one.
 
 ## Faking outbound HTTP
 

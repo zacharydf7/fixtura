@@ -37,6 +37,7 @@ Fixtura.TestClientOptions.Handlers.init -> void
 Fixtura.TestClientOptions.Scheme.get -> string?
 Fixtura.TestClientOptions.Scheme.init -> void
 Fixtura.TestClientOptions.TestClientOptions() -> void
+Fixtura.TestHost<TProgram>.ClientAddress.get -> System.Uri!
 Fixtura.TestHost<TProgram>.Clock.get -> Microsoft.Extensions.Time.Testing.FakeTimeProvider!
 Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
 Fixtura.TestHost<TProgram>.CreateHandlerAsync(Fixtura.TestUser? user = null, string? scheme = null) -> System.Threading.Tasks.Task<System.Net.Http.HttpMessageHandler!>!

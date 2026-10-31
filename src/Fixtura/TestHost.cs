@@ -52,6 +52,13 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     private HostFactory Factory => FactoryAsync().GetAwaiter().GetResult();
 
+    /// <summary>
+    /// Where the fixture's own clients send their requests: <c>http://localhost</c> on the test server, which only a
+    /// handler from <see cref="CreateHandlerAsync"/> reaches, or the app's address on Kestrel. Pair the two for a client
+    /// the fixture doesn't build, such as a gRPC channel.
+    /// </summary>
+    public Uri ClientAddress => Factory.ClientOptions.BaseAddress;
+
     private BackgroundService? CrashedBackgroundService()
     {
         lock (_gate)

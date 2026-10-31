@@ -28,18 +28,14 @@ forwards to others, the app has several bearer schemes, or its endpoints name th
 SignalR connections, WebSockets and browsers aren't built with `CreateClientAsync`, but can still sign in as a test
 user:
 
-- `CreateHandlerAsync(user)` returns a handler that reaches the app signed in as the user and keeps the cookies the app
-  sets, for a client that takes a handler. On the test server, give it to SignalR with the long-polling transport:
+- For SignalR, `Fixtura.SignalR`'s `api.CreateHubConnectionAsync("/hubs/orders", user)` does all of it; see
+  [SignalR](signalr.md).
+- `CreateHandlerAsync(user)` returns a handler that reaches the app at `api.ClientAddress`, signed in as the user and
+  keeping the cookies the app sets, for another client that takes a handler, such as a gRPC channel:
 
   ```csharp
   HttpMessageHandler handler = await api.CreateHandlerAsync(TestUser.Named("ann"));
-  HubConnection hub = new HubConnectionBuilder()
-      .WithUrl("http://localhost/hubs/orders", options =>
-      {
-          options.HttpMessageHandlerFactory = _ => handler;
-          options.Transports = HttpTransportType.LongPolling;
-      })
-      .Build();
+  using GrpcChannel channel = GrpcChannel.ForAddress(api.ClientAddress, new GrpcChannelOptions { HttpHandler = handler });
   ```
 
 - `SignInAsync(user)` returns a `SignedInUser` with the `BearerToken` or the `Cookie`, whichever `host.Users.SignIn`

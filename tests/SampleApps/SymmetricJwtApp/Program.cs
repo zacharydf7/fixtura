@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 
 namespace SymmetricJwtApp;
@@ -29,6 +31,7 @@ public class Program
             };
         });
         builder.Services.AddAuthorization();
+        builder.Services.AddSignalR();
 
         WebApplication app = builder.Build();
         app.UseAuthentication();
@@ -39,6 +42,25 @@ public class Program
             Roles = user.FindAll(ClaimTypes.Role).Select(claim => claim.Value),
             CheckedBy = user.FindFirst("checked-by")?.Value
         }).RequireAuthorization(policy => policy.RequireRole("Auditor"));
+        app.MapHub<EchoHub>("/hubs/echo");
+        app.MapHub<GreetingHub>("/hubs/greeting");
         app.Run();
     }
+}
+
+// Answers the caller with what it sent, and logs it; open to anyone.
+public sealed class EchoHub(ILogger<EchoHub> logger) : Hub
+{
+    public Task Echo(string text)
+    {
+        logger.LogInformation("Echoing {Text}.", text);
+        return Clients.Caller.SendAsync("Echoed", text);
+    }
+}
+
+// Greets a signed-in caller by name as it connects.
+[Authorize]
+public sealed class GreetingHub : Hub
+{
+    public override Task OnConnectedAsync() => Clients.Caller.SendAsync("Greeted", Context.User!.Identity!.Name);
 }
