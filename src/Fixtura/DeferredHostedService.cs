@@ -8,8 +8,14 @@ namespace Fixtura;
 internal sealed class DeferredHostedService<THostedService>(THostedService service, ILogger? logger) : IHostedService
     where THostedService : IHostedService
 {
-    // Not started, started, then stopped: WebApplicationFactory can stop the host more than once.
+    private readonly Lock _gate = new();
+
+    // Not started, then started.
     private int _state;
+
+    // WebApplicationFactory and the app's own Run both stop the host, at the same time, so the later stop waits for the
+    // first instead of returning before the service has stopped.
+    private Task? _stop;
 
     public THostedService Service => service;
 
@@ -35,13 +41,21 @@ internal sealed class DeferredHostedService<THostedService>(THostedService servi
         }
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
-        if (Interlocked.CompareExchange(ref _state, 2, 1) != 1)
+        if (Volatile.Read(ref _state) == 0)
         {
-            return;
+            return Task.CompletedTask;
         }
 
+        lock (_gate)
+        {
+            return _stop ??= StopNowAsync(cancellationToken);
+        }
+    }
+
+    private async Task StopNowAsync(CancellationToken cancellationToken)
+    {
         var lifecycle = service as IHostedLifecycleService;
         await (lifecycle?.StoppingAsync(cancellationToken) ?? Task.CompletedTask);
         await service.StopAsync(cancellationToken);

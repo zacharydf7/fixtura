@@ -184,6 +184,23 @@ public class ServiceCollectionSwapsTests
         Assert.Throws<NothingMatchedException>(services.DeferHostedService<CleanupWorker>);
     }
 
+    // WebApplicationFactory and the app's own Run both stop the host when a fixture is disposed.
+    [Fact]
+    public async Task StopAsync_ShouldWaitForTheFirstStop_WhenTheHostStopsTwiceAtOnce()
+    {
+        var worker = new GatedWorker();
+        var deferred = new DeferredHostedService<GatedWorker>(worker, null);
+        await deferred.StartNowAsync(TestContext.Current.CancellationToken);
+        Task first = deferred.StopAsync(TestContext.Current.CancellationToken);
+
+        Task second = deferred.StopAsync(TestContext.Current.CancellationToken);
+
+        bool secondWaited = !second.IsCompleted;
+        worker.Gate.SetResult();
+        await Task.WhenAll(first, second);
+        Assert.Equal((true, 1), (secondWaited, worker.Stops));
+    }
+
     public interface IClock
     {
         DateTimeOffset Now { get; }
@@ -219,5 +236,21 @@ public class ServiceCollectionSwapsTests
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public void Dispose() => Disposed = true;
+    }
+
+    // Stays stopping until the test opens the gate, as a worker finishing its last batch does.
+    public sealed class GatedWorker : IHostedService
+    {
+        public TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int Stops { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            Stops++;
+            return Gate.Task;
+        }
     }
 }
