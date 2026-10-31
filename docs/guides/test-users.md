@@ -71,3 +71,16 @@ the user, the app's services and a cancellation token:
 [!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#custom-seeder)]
 
 A seeder is created from the app's services for each sign-in, so its constructor can take any of them.
+
+## Endpoints anyone can reach
+
+`api.Endpoints.AllowingAnonymousAsync()` lists the endpoints a request reaches without signing in, so one test can hold
+them to an allowlist and fail when a new endpoint forgets `RequireAuthorization`:
+
+[!code-csharp[](../samples/Bookshop.Tests/SecuredApi.cs#anonymous-endpoints)]
+
+- Each entry is the method and the route, such as `GET /books`, or `* /health` for an endpoint that takes any method.
+- An endpoint is listed when it has `AllowAnonymous`, or, unless the app sets a fallback policy, when it asks for no
+  authorization of its own, as ASP.NET Core's authorization middleware decides.
+- It reads the endpoints' metadata, so a check made inside a handler doesn't count, and neither does a policy that lets
+  everyone through.

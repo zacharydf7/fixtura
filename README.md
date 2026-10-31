@@ -258,6 +258,10 @@ doesn't ask for it, so a user that one test made a `Manager` is a plain user aga
 gave the user stay. Override `NewUser` to set your own fields on a user it creates, or implement `ITestUserSeeder` for
 any other store.
 
+`await api.Endpoints.AllowingAnonymousAsync()` lists the endpoints a request reaches without signing in, such as
+`GET /ping`, from their `AllowAnonymous` and authorization metadata and the app's fallback policy. Compare it to an
+allowlist in one test, so a new endpoint that forgets `RequireAuthorization` fails it.
+
 ### SignalR hubs
 
 ```csharp

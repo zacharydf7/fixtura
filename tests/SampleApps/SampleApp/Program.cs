@@ -71,7 +71,7 @@ app.MapGet("/ping", (ILogger<Program> logger) =>
 {
     logger.LogInformation("Pinged.");
     return "pong";
-});
+}).AllowAnonymous();
 
 app.MapGet("/carriers", (IOptions<ShippingOptions> shipping) => shipping.Value.Carriers.Select(carrier => carrier.Name));
 

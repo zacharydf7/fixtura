@@ -45,6 +45,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>The app's services. Skips the test when a resource such as a database is unavailable.</summary>
     public IServiceProvider Services => Factory.Services;
 
+    /// <summary>The app's endpoints, such as those a request reaches without signing in.</summary>
+    public TestEndpoints Endpoints => new(async () => (await FactoryAsync()).Services);
+
     /// <summary>Where a real-socket client, such as a browser, reaches the app; needs <see cref="ServerKind.Kestrel"/>.</summary>
     public Uri BaseAddress => _builder.Server == ServerKind.Kestrel
         ? Factory.ClientOptions.BaseAddress

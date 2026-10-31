@@ -72,3 +72,17 @@ public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
     }
 }
 // </order-tests>
+
+// <anonymous-endpoints>
+public class EndpointTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
+{
+    // A new endpoint that forgets RequireAuthorization fails here until someone adds it on purpose.
+    [Fact]
+    public async Task AllowingAnonymousAsync_ShouldListOnlyTheCatalog_WhenCalled()
+    {
+        IReadOnlyList<string> anonymous = await shop.Endpoints.AllowingAnonymousAsync();
+
+        Assert.Equal(["GET /books"], anonymous);
+    }
+}
+// </anonymous-endpoints>

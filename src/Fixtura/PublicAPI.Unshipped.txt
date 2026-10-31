@@ -37,6 +37,8 @@ Fixtura.TestClientOptions.Handlers.init -> void
 Fixtura.TestClientOptions.Scheme.get -> string?
 Fixtura.TestClientOptions.Scheme.init -> void
 Fixtura.TestClientOptions.TestClientOptions() -> void
+Fixtura.TestEndpoints
+Fixtura.TestEndpoints.AllowingAnonymousAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
 Fixtura.TestHost<TProgram>.ChangeSettingsAsync(object! settings) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.ChangeSettingsAsync(string! json) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.ClientAddress.get -> System.Uri!
@@ -44,6 +46,7 @@ Fixtura.TestHost<TProgram>.Clock.get -> Microsoft.Extensions.Time.Testing.FakeTi
 Fixtura.TestHost<TProgram>.CreateClientAsync(Fixtura.TestUser? user, Fixtura.TestClientOptions! options) -> System.Threading.Tasks.Task<System.Net.Http.HttpClient!>!
 Fixtura.TestHost<TProgram>.CreateHandlerAsync(Fixtura.TestUser? user = null, string? scheme = null) -> System.Threading.Tasks.Task<System.Net.Http.HttpMessageHandler!>!
 Fixtura.TestHost<TProgram>.CreateScopeAsync() -> System.Threading.Tasks.Task<Microsoft.Extensions.DependencyInjection.AsyncServiceScope>!
+Fixtura.TestHost<TProgram>.Endpoints.get -> Fixtura.TestEndpoints!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Action<System.IServiceProvider!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.HttpFake(string! clientName) -> Fixtura.HttpFake!
