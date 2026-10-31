@@ -87,6 +87,7 @@ public static class DbContextSwaps
             services.Remove(original);
         }
 
+        services.AddSingleton(new SwappedDbContext(typeof(TContext)));
         services.ConfigureDbContext<TContext>((provider, builder) =>
         {
             IDbContextOptionsExtension? appProvider = appOptions == AppDbOptions.Keep
@@ -159,3 +160,6 @@ public static class DbContextSwaps
         return scratch.Options.Extensions.SingleOrDefault(extension => extension.Info.IsDatabaseProvider);
     }
 }
+
+// Marks a context the fixture moved to a test database, the only kind CreateDatabasesOnStart creates.
+internal sealed record SwappedDbContext(Type ContextType);

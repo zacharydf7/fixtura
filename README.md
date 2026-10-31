@@ -168,10 +168,11 @@ api.Services.AssertNoPendingModelChanges<OrdersDbContext>();   // in a test
 ```
 
 - `MigrateBeforeStart` applies the context's migrations as the host starts, before any hosted service starts, so a
-  worker never sees a missing table.
+  worker never sees a missing table. `CreateDatabasesOnStart()` does it for every context the fixture moved, at the same
+  time for contexts on different databases, and creates the schema from the model for a context without migrations.
 - `SeedOnReset` runs as the fixture's host starts, after the migrations and before any worker, and after every
   `ResetDataAsync`, and saves what it adds, for reference data the tests need. The schema must exist by then: from
-  `MigrateBeforeStart`, or created in Program.cs before the app runs.
+  `MigrateBeforeStart` or `CreateDatabasesOnStart`, or created in Program.cs before the app runs.
 - `AssertNoPendingModelChanges` throws when the model has changes no migration covers, so a forgotten migration fails a
   test.
 

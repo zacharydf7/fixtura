@@ -45,6 +45,11 @@ Each swap replaces the context's options configuration, so a later swap of the s
 - `MigrateBeforeStart<TContext>()` applies the context's migrations as the host starts. It runs before any of the app's
   hosted services start, so a worker never meets a schema that isn't there yet. Use it when the app doesn't migrate at
   start-up itself.
+- `host.CreateDatabasesOnStart()` does the same for every context the fixture moved with `ReplaceDbContext` or
+  `ReplaceDbContexts`: it applies a context's migrations when it has some, or else creates the schema from the model.
+  Each context gets its tables even when several share a database, and a database that already has tables, such as one
+  reused from an earlier fixture, keeps its schema. Contexts on different databases are created at the same time, which saves time when an app has several, and a context
+  the fixture didn't move, still pointing at the app's own database, is left alone.
 - `api.Services.AssertNoPendingModelChanges<TContext>()` throws when the model has changes that no migration covers, as
   EF Core's `HasPendingModelChanges` reports them. One test with it catches a forgotten migration before a deployment
   does.

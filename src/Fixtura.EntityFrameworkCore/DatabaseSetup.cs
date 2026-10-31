@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -26,10 +28,25 @@ public static class DatabaseSetup
     }
 
     /// <summary>
+    /// Creates the database of every context the fixture moved with <c>ReplaceDbContext</c> or <c>ReplaceDbContexts</c>
+    /// as the host starts, before the app's hosted services and the seeds: it applies a context's migrations when it has
+    /// some, or else creates the schema from the model, each context's tables even when several share a database. A
+    /// database that already has tables, such as one reused from an earlier fixture, keeps its schema. Contexts on
+    /// different databases are created at the same time. A context the fixture didn't move still points at the app's own
+    /// database, so it's left alone.
+    /// </summary>
+    public static TestHostBuilder CreateDatabasesOnStart(this TestHostBuilder host)
+    {
+        StartupFor(host).Migrations.Add(CreateDatabasesAsync);
+        return host;
+    }
+
+    /// <summary>
     /// Runs <paramref name="seed"/> as the fixture's host starts, after <c>MigrateBeforeStart</c>'s migrations and before
     /// the app's hosted services start, and after every <c>ResetDataAsync</c>, and saves what it adds. For reference data
-    /// the tests need. The schema must exist by then: from <c>MigrateBeforeStart</c>, or created in Program.cs before the
-    /// app runs. Call it in the fixture's <c>Configure</c>, not in <c>WithOverrides</c>.
+    /// the tests need. The schema must exist by then: from <c>MigrateBeforeStart</c> or <c>CreateDatabasesOnStart</c>,
+    /// or created in Program.cs before the app runs. Call it in the fixture's <c>Configure</c>, not in
+    /// <c>WithOverrides</c>.
     /// </summary>
     public static TestHostBuilder SeedOnReset<TContext>(this TestHostBuilder host, Func<TContext, Task> seed)
         where TContext : DbContext
@@ -77,6 +94,68 @@ public static class DatabaseSetup
         await seed(db);
         await db.SaveChangesAsync();
     }
+
+    // Contexts on one database are handled together, in turn; different databases are created at the same time.
+    private static async Task CreateDatabasesAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        List<DbContext> contexts = [.. services.GetServices<SwappedDbContext>().Select(swapped => swapped.ContextType)
+            .Distinct()
+            .Select(type => (DbContext)ActivatorUtilities.CreateInstance(services, type,
+                services.GetRequiredService(typeof(DbContextOptions<>).MakeGenericType(type))))];
+        try
+        {
+            await Task.WhenAll(contexts.GroupBy(DatabaseOf)
+                .Select(sharing => CreateAsync([.. sharing], cancellationToken)));
+        }
+        finally
+        {
+            foreach (DbContext db in contexts)
+            {
+                await db.DisposeAsync();
+            }
+        }
+    }
+
+    // EnsureCreated makes only the first context's tables in a database, so a fresh one gets each context's tables in
+    // turn. One that already has tables, such as a reused one, keeps its schema, as EnsureCreated would leave it;
+    // contexts with migrations get their pending ones either way.
+    private static async Task CreateAsync(List<DbContext> sharing, CancellationToken cancellationToken)
+    {
+        if (!sharing[0].Database.IsRelational())
+        {
+            foreach (DbContext db in sharing)
+            {
+                await db.Database.EnsureCreatedAsync(cancellationToken);
+            }
+
+            return;
+        }
+
+        var database = sharing[0].GetService<IRelationalDatabaseCreator>();
+        bool fresh = !await database.ExistsAsync(cancellationToken) || !await database.HasTablesAsync(cancellationToken);
+        foreach (DbContext db in sharing)
+        {
+            if (db.Database.GetMigrations().Any())
+            {
+                await db.Database.MigrateAsync(cancellationToken);
+            }
+            else if (fresh)
+            {
+                var creator = db.GetService<IRelationalDatabaseCreator>();
+                if (!await creator.ExistsAsync(cancellationToken))
+                {
+                    await creator.CreateAsync(cancellationToken);
+                }
+
+                await creator.CreateTablesAsync(cancellationToken);
+            }
+        }
+    }
+
+    // Read from the connection, so two spellings of one connection string still count as one database.
+    private static string DatabaseOf(DbContext db) => db.Database.IsRelational()
+        ? $"{db.Database.GetDbConnection().DataSource}/{db.Database.GetDbConnection().Database}"
+        : "";
 
     // From the context's options, so it works however the app registered the context.
     internal static TContext Create<TContext>(IServiceProvider services) where TContext : DbContext =>
