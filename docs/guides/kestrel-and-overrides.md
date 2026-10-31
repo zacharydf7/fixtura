@@ -24,3 +24,5 @@ fixture's recorded changes plus a few more:
 - Each override costs a full host build. Dispose it with `await using`, and keep overrides for the few tests that need
   them; a shape many tests need deserves its own fixture. The fixture disposes any override still running when it's
   disposed itself.
+- A test that only changes settings the app reads while it runs, such as through `IOptionsSnapshot` or `IConfiguration`,
+  can use [`ChangeSettingsAsync`](settings.md#changing-settings-during-a-test) instead, with no build.

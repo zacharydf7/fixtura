@@ -134,6 +134,13 @@ internal static class GuideSnippets
         // </settings>
     }
 
+    public static async Task ChangeSettings(TestHost<Program> shop)
+    {
+        // <change-settings>
+        await shop.ChangeSettingsAsync(new { Shop = new { FreeShippingOver = 0 } });
+        // </change-settings>
+    }
+
     public static async Task TestUsers(ShopFixture shop)
     {
         // <test-users>

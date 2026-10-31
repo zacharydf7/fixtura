@@ -25,6 +25,7 @@ public sealed class TestHostBuilder
     private LogLevel? _testOutputLevel;
     private FakeTimeProvider? _clock;
     private DateTimeOffset _clockStart;
+    private TestSettingsProvider? _appSettings;
 
     internal TestHostBuilder()
     {
@@ -328,7 +329,9 @@ public sealed class TestHostBuilder
             web.UseSetting(setting.Key, setting.Value);
         }
 
-        web.ConfigureAppConfiguration((_, configuration) => ApplyLateSettings(settings, configuration));
+        var appSettings = new TestSettingsProvider(settings);
+        _appSettings = appSettings;
+        web.ConfigureAppConfiguration((_, configuration) => ApplyLateSettings(appSettings, settings, configuration));
         web.ConfigureTestServices(services =>
         {
             // Every stale swap is reported at once, so a rename shows all the swaps it broke in one run.
@@ -394,6 +397,7 @@ public sealed class TestHostBuilder
 
         Http.Reset();
         Recorders.Reset();
+        _appSettings?.Reset();
 
         if (services is null)
         {
@@ -415,7 +419,8 @@ public sealed class TestHostBuilder
         }
     }
 
-    private static void ApplyLateSettings(SettingsOverlay settings, IConfigurationBuilder configuration)
+    private static void ApplyLateSettings(TestSettingsProvider appSettings, SettingsOverlay settings,
+        IConfigurationBuilder configuration)
     {
         if (settings.ArrayPaths.Count > 0)
         {
@@ -425,8 +430,11 @@ public sealed class TestHostBuilder
             }
         }
 
-        configuration.AddInMemoryCollection(settings.Values);
+        configuration.Add(new TestSettingsSource(appSettings));
     }
+
+    internal void ChangeSettings(SettingsOverlay change) =>
+        (_appSettings ?? throw new InvalidOperationException("The host isn't built yet.")).Change(change);
 
     internal TResource FindResource<TResource>() where TResource : ITestResource
     {

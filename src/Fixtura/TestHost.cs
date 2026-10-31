@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.ExceptionServices;
+using Fixtura.Settings;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
@@ -377,10 +378,39 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         _builder.Clock ?? throw new InvalidOperationException("Clock needs host.UseFakeClock() in the fixture's Configure.");
 
     /// <summary>
+    /// Changes settings while the host runs, without a rebuild, with an object shaped like appsettings.json as
+    /// <see cref="TestHostBuilder.Settings(object)"/> takes, such as <c>new { Features = new { Reports = false } }</c>.
+    /// <c>IConfiguration</c>, <c>IOptionsSnapshot</c>, <c>IOptionsMonitor</c> of options bound to a configuration section,
+    /// and feature flags read from configuration see the change. An <c>IOptions</c> value, a monitor of options filled in
+    /// by a lambda, and a setting Program.cs read at start-up keep what they had, so change those with
+    /// <see cref="WithOverrides"/>. It can replace an array only if the fixture's settings set it. Later calls win, and
+    /// <see cref="ResetDataAsync"/> brings back the fixture's settings. Never call it while another test uses the same
+    /// fixture.
+    /// </summary>
+    public async Task ChangeSettingsAsync(object settings)
+    {
+        SettingsOverlay change = SettingsOverlay.FromObject(settings);
+        await FactoryAsync();
+        _builder.ChangeSettings(change);
+    }
+
+    /// <summary>
+    /// Like <see cref="ChangeSettingsAsync(object)"/>, with JSON shaped like appsettings.json; comments and trailing commas
+    /// are allowed.
+    /// </summary>
+    public async Task ChangeSettingsAsync(string json)
+    {
+        SettingsOverlay change = SettingsOverlay.FromJson(json);
+        await FactoryAsync();
+        _builder.ChangeSettings(change);
+    }
+
+    /// <summary>
     /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,
-    /// HTTP fakes and call recorders forget their requests and calls and a test's responses and results, then the steps
-    /// added with <see cref="TestHostBuilder.OnReset(Func{IServiceProvider, Task})"/> run. Call it before a test, never
-    /// while another test uses the same fixture, as tests sharing an assembly fixture can.
+    /// HTTP fakes and call recorders forget their requests and calls and a test's responses and results, settings a test
+    /// changed go back to the fixture's, then the steps added with
+    /// <see cref="TestHostBuilder.OnReset(Func{IServiceProvider, Task})"/> run. Call it before a test, never while another
+    /// test uses the same fixture, as tests sharing an assembly fixture can.
     /// </summary>
     public Task ResetDataAsync()
     {

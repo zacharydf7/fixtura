@@ -41,7 +41,7 @@ app.UseAuthorization();
 app.MapGet("/books", (ShopDb db) => db.Books.OrderBy(book => book.Id).ToListAsync());
 
 app.MapPost("/orders", async (PlaceOrder request, ClaimsPrincipal user, ShopDb db, ShippingClient shipping,
-    IOptions<ShopOptions> shop, TimeProvider clock, IHubContext<OrderFeed> feed, ILogger<Program> logger) =>
+    IOptionsSnapshot<ShopOptions> shop, TimeProvider clock, IHubContext<OrderFeed> feed, ILogger<Program> logger) =>
 {
     Book? book = await db.Books.FindAsync(request.BookId);
     if (book is null)

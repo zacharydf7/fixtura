@@ -201,6 +201,11 @@ host.Options<ShippingOptions>(shipping => shipping.Carriers = [new Carrier { Nam
 - `Options<TOptions>` changes the bound options after the app's own post-configuration, which suits typed lists. It
   reaches every instance, named or not, such as each authentication scheme's; `Options<TOptions>(name, ...)` changes
   one.
+- `await api.ChangeSettingsAsync(new { ... })` changes settings while the host runs, without a rebuild, and
+  `ResetDataAsync` brings back the fixture's. `IConfiguration`, `IOptionsSnapshot`, `IOptionsMonitor` of options bound
+  to a configuration section, and feature flags read from configuration see the change. An `IOptions` value, a monitor
+  of options filled in by a lambda, and a setting `Program.cs` read at start-up keep theirs, so change those with
+  `WithOverrides`. It can replace an array only if the fixture's `Settings` set it.
 - `host.Environment = "Testing"` runs the app in that environment, so it loads `appsettings.Testing.json`; it's
   Development unless set. `host.WebHost(web => ...)` reaches the web host builder for anything else, such as the
   content root; it runs after the fixture's other changes.

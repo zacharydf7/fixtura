@@ -11,6 +11,28 @@
   so it can hold what they provide, such as a database's connection string for code that reads it from configuration.
 - Later calls win, key by key, whichever kind they are.
 
+## Changing settings during a test
+
+A test that needs one setting changed doesn't need a host of its own. `ChangeSettingsAsync` changes settings while the
+host runs, without a rebuild:
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#change-settings)]
+
+- It takes an object or JSON shaped like `appsettings.json`, as `Settings` does, and wins over the fixture's settings.
+  Later calls win, key by key.
+- It can replace an array the fixture's `Settings` set, whole, as `Settings` does. Any other array throws, naming it:
+  set that array in the fixture's `Settings`, even to the app's own values, and a test can then replace it.
+- `IConfiguration` and `IOptionsSnapshot` see the change, and so do feature flags read from configuration, such as
+  Microsoft.FeatureManagement's. Bookshop reads `ShopOptions` through `IOptionsSnapshot`, so the next order uses the new
+  free-shipping price.
+- `IOptionsMonitor` sees it for options bound to a configuration section, with `Configure<T>(section)` or
+  `BindConfiguration`. Options filled in by a lambda that reads `IConfiguration` have no change to watch, so their
+  monitor keeps the old value.
+- An `IOptions` value is read once and kept, and so is a setting `Program.cs` read at start-up, such as one that decides
+  which endpoints to map. For those, use a [per-test override](kestrel-and-overrides.md#per-test-overrides).
+- `ResetDataAsync` brings back the fixture's settings, so a test that resets first never sees another's change. Like
+  `ResetDataAsync`, never call it while another test uses the same fixture.
+
 ## The environment
 
 `host.Environment = "Testing"` runs the app in that environment, so it loads `appsettings.Testing.json` and its
