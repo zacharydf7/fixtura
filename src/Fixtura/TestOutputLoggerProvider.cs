@@ -6,39 +6,17 @@ namespace Fixtura;
 
 // Writes the app's logs to the output of the test whose request caused them. Logs that belong to no running test, such
 // as a background service's, become xUnit diagnostic messages.
-internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<string> sendDiagnosticMessage) : ILoggerProvider
+internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<string> sendDiagnosticMessage)
+    : ILoggerProvider, IProbedLoggerProvider
 {
     public static void AddTo(IServiceCollection services, LogLevel minimumLevel, Action<string> sendDiagnosticMessage)
     {
         services.AddLogging(logging => logging.AddProvider(new TestOutputLoggerProvider(minimumLevel, sendDiagnosticMessage)));
-        // Registered first, so its middleware runs ahead of every other filter's and no middleware sees the header.
-        services.Insert(0, ServiceDescriptor.Singleton(TestRequests.StartupFilter));
     }
 
-    // A category the provider recognizes but never writes, logged once to check that the app's logs reach it.
-    private const string ProbeCategory = "Fixtura.LogToTestOutput";
+    public string Setting => "LogToTestOutput";
 
-    private bool _probed;
-
-    // Apps can swap in a logger factory of their own, as Serilog does, which may ignore the providers a test adds. The
-    // framework's factory always uses them, so only a replaced one gets the probe, which its other sinks see too.
-    public static void EnsureReachable(IServiceProvider services)
-    {
-        ILoggerFactory factory = services.GetRequiredService<ILoggerFactory>();
-        if (factory.GetType() == typeof(LoggerFactory))
-        {
-            return;
-        }
-
-        TestOutputLoggerProvider provider = services.GetServices<ILoggerProvider>().OfType<TestOutputLoggerProvider>().Last();
-        factory.CreateLogger(ProbeCategory).Log(LogLevel.Critical, "Checking that the app's logs reach the test output.");
-        if (!provider._probed)
-        {
-            throw new InvalidOperationException($"LogToTestOutput can't see the app's logs: its logger factory, "
-                + $"{factory.GetType().FullName}, doesn't pass them to the providers a test adds. With Serilog, pass "
-                + "writeToProviders: true to UseSerilog or AddSerilog.");
-        }
-    }
+    public bool Probed { get; private set; }
 
     private LogLevel MinimumLevel { get; } = minimumLevel;
 
@@ -78,9 +56,9 @@ internal sealed class TestOutputLoggerProvider(LogLevel minimumLevel, Action<str
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            if (category == ProbeCategory)
+            if (category == LogProbe.Category)
             {
-                provider._probed = true;
+                provider.Probed = true;
                 return;
             }
 

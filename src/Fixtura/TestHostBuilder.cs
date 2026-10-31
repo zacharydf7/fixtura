@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -47,6 +48,9 @@ public sealed class TestHostBuilder
         Http = parent.Http.Copy();
         Server = parent.Server;
         _testOutputLevel = parent._testOutputLevel;
+        CapturesLogs = parent.CapturesLogs;
+        IsAppErrorFailure = parent.IsAppErrorFailure;
+        Logs = parent.Logs;
         _clock = parent._clock;
         _clockStart = parent._clockStart;
         FailsOnBackgroundServiceCrash = parent.FailsOnBackgroundServiceCrash;
@@ -77,6 +81,15 @@ public sealed class TestHostBuilder
     internal bool FailsOnBackgroundServiceCrash { get; private set; }
 
     internal bool LogsToTestOutput => _testOutputLevel is not null;
+
+    // The fixture's clients tag their requests whenever something needs to know which test a request's logs belong to.
+    internal bool TagsRequests => LogsToTestOutput || CapturesLogs;
+
+    internal bool CapturesLogs { get; private set; }
+
+    internal TestLogs Logs { get; } = new();
+
+    internal Func<FakeLogRecord, bool>? IsAppErrorFailure { get; private set; }
 
     /// <summary>
     /// Adds a feature instance, such as one that takes settings of its own. Adding the same instance twice runs it once.
@@ -202,6 +215,30 @@ public sealed class TestHostBuilder
     }
 
     /// <summary>
+    /// Keeps what the app logs for each test, as the app's own logging settings filter it, for the test to assert on
+    /// through the fixture's <c>Logs</c>.
+    /// </summary>
+    public TestHostBuilder CaptureLogs()
+    {
+        CapturesLogs = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Fails a request sent through the fixture's clients when the app logs an error while handling it, so a response
+    /// that hid a swallowed exception doesn't pass. The request throws in the test, listing the errors. Errors that
+    /// <paramref name="except"/> accepts, such as one a test expects, don't fail it. The check runs once the response
+    /// starts, so errors logged later, such as while a body streams, don't fail it. Captures logs as
+    /// <see cref="CaptureLogs"/> does.
+    /// </summary>
+    public TestHostBuilder FailOnAppErrors(Func<FakeLogRecord, bool>? except = null)
+    {
+        CapturesLogs = true;
+        IsAppErrorFailure = error => except?.Invoke(error) != true;
+        return this;
+    }
+
+    /// <summary>
     /// Changes the web host directly, for what the builder has no member for, such as the content root or a third-party
     /// container's test configuration. Runs after the builder's other changes, though a key set there with
     /// <c>UseSetting</c> still loses to <c>Settings</c>.
@@ -310,6 +347,19 @@ public sealed class TestHostBuilder
             if (_testOutputLevel is LogLevel level)
             {
                 TestOutputLoggerProvider.AddTo(services, level, sendDiagnosticMessage);
+            }
+
+            if (CapturesLogs)
+            {
+                string setting = IsAppErrorFailure is null ? "CaptureLogs" : "FailOnAppErrors";
+                services.AddLogging(logging => logging.AddProvider(new TestLogsProvider(Logs, setting)));
+            }
+
+            if (TagsRequests)
+            {
+                // Registered first, so its middleware runs ahead of every other filter's and no middleware sees the
+                // header.
+                services.Insert(0, ServiceDescriptor.Singleton(TestRequests.StartupFilter));
             }
         });
 

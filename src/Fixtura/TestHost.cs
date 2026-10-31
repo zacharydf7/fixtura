@@ -100,16 +100,16 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
         try
         {
-            if (_builder.LogsToTestOutput)
+            if (_builder.TagsRequests)
             {
-                // The host outlives this test, so its background work mustn't carry this test's context and send logs to
-                // its output.
+                // The host outlives this test, so its start-up and background work mustn't carry this test's context
+                // and have their logs taken for this test's.
                 using (ExecutionContext.SuppressFlow())
                 {
                     _ = factory.Services;
                 }
 
-                TestOutputLoggerProvider.EnsureReachable(factory.Services);
+                LogProbe.EnsureReachable(factory.Services);
             }
             else
             {
@@ -169,6 +169,13 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>The fake the fixture set up in <c>Configure</c> for the typed client.</summary>
     public HttpFake HttpFake<TClient>() where TClient : class => _builder.Http.Find<TClient>();
 
+    /// <summary>
+    /// What the app logged for each test; needs <c>host.CaptureLogs()</c> or <c>host.FailOnAppErrors()</c>.
+    /// </summary>
+    public TestLogs Logs => _builder.CapturesLogs
+        ? _builder.Logs
+        : throw new InvalidOperationException("The fixture captures no logs; call host.CaptureLogs() in Configure.");
+
     /// <summary>The one resource of this type the fixture added in <c>Configure</c>, such as its database server.</summary>
     public TResource Resource<TResource>() where TResource : ITestResource => _builder.FindResource<TResource>();
 
@@ -197,9 +204,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
                 handlers.Add(new RedirectHandler());
             }
 
-            if (_builder.LogsToTestOutput)
+            if (_builder.TagsRequests)
             {
-                handlers.Add(new TestRequests.TagHandler());
+                handlers.Add(new TestRequests.TagHandler(_builder.IsAppErrorFailure));
             }
 
             handlers.Add(new CookieContainerHandler(cookies));
@@ -244,9 +251,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
             : factory.Server.CreateHandler();
         bool asHttps = _builder.Server == ServerKind.TestServer && address.Scheme == Uri.UriSchemeHttps;
         HttpMessageHandler inner = new CookieContainerHandler(cookies) { InnerHandler = server };
-        if (_builder.LogsToTestOutput)
+        if (_builder.TagsRequests)
         {
-            inner = new TestRequests.TagHandler { InnerHandler = inner };
+            inner = new TestRequests.TagHandler(_builder.IsAppErrorFailure) { InnerHandler = inner };
         }
 
         return new SignedInHandler(signedIn?.BearerToken, asHttps) { InnerHandler = inner };

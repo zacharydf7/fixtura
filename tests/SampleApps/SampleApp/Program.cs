@@ -82,6 +82,13 @@ app.MapGet("/rates/{currency}", (string currency, IHttpClientFactory http) =>
     http.CreateClient("rates").GetFromJsonAsync<Rate>($"today/{currency}"));
 
 app.MapGet("/home", () => Results.Redirect("/ping"));
+
+// Logs an error but still answers 200, as code that swallows an exception does.
+app.MapGet("/swallowed", (ILogger<Program> logger) =>
+{
+    logger.LogError(new InvalidOperationException("The cache is down."), "Swallowed an error.");
+    return "ok";
+});
 app.MapGet("/culture", () => System.Globalization.CultureInfo.CurrentCulture.Name);
 app.MapPost("/parcels/{number}/track", (string number, TrackingClient tracking) => tracking.TrackAsync(number));
 

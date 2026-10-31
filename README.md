@@ -298,6 +298,9 @@ host.LogToTestOutput(LogLevel.Warning); // or a higher minimum
   lines, become xUnit diagnostic messages, which show when diagnostic messages are turned on.
 - An app with a logger factory of its own, as Serilog sets up, fails the host build with an error that names the fix
   unless the factory passes logs on to other providers: with Serilog, `UseSerilog(..., writeToProviders: true)`.
+- `host.CaptureLogs()` keeps each test's logs for it to assert on: `api.Logs.Current` holds the running test's
+  `FakeLogRecord`s. `host.FailOnAppErrors(except: ...)` makes a request throw in the test when the app logs an error
+  while handling it, so a 200 that hid a swallowed exception fails.
 
 ## Missing infrastructure
 

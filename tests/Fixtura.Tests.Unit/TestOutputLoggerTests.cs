@@ -43,7 +43,7 @@ public class TestOutputLoggerTests
             .AddSingleton<ILoggerFactory>(provider => new AppLoggerFactory(provider.GetServices<ILoggerProvider>()))
             .BuildServiceProvider();
 
-        Exception? error = Record.Exception(() => TestOutputLoggerProvider.EnsureReachable(services));
+        Exception? error = Record.Exception(() => LogProbe.EnsureReachable(services));
 
         Assert.Null(error);
         Assert.Empty(messages);

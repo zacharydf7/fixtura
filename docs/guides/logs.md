@@ -20,10 +20,42 @@ output when it fails, so a 500 comes with the app's own explanation.
 
 Logging to test output is off unless a fixture asks for it.
 
+## Asserting on logs
+
+`host.CaptureLogs()` keeps what the app logs for each test, so a test can check that the app logged a warning, for
+example:
+
+```csharp
+await client.PostAsync("/orders", content);
+
+Assert.Contains(api.Logs.Current, log => log.Level == LogLevel.Warning && log.Message.Contains("low stock"));
+```
+
+`api.Logs.Current` holds the running test's `FakeLogRecord`s, oldest first: those the app logged while handling the
+test's requests through the fixture's clients, and those of work the test ran itself, such as a service it called. The
+app's own `Logging` settings filter them, as they do the test output. Logs that belong to no test, such as start-up's
+or a background service's, aren't kept.
+
+## Failing on app errors
+
+A response can look fine while the app logged an exception it swallowed. `host.FailOnAppErrors()` turns an error the
+app logs while handling a request from the fixture's clients into a failure: the request throws in the test, listing
+the errors. Errors a test expects can pass:
+
+```csharp
+host.FailOnAppErrors(except: error => error.Category == "Shop.Payments" && error.Exception is TimeoutException);
+```
+
+An unhandled exception that becomes a 500 is logged as an error too, so a test that expects a 500 needs `except`. The
+check runs once the app starts its response, without waiting for a body that may stream without end, so errors logged
+after that, or outside such a request, such as in a background service, don't fail anything. `FailOnAppErrors` captures
+logs as `CaptureLogs` does.
+
 ## Serilog and other logger factories
 
 Serilog's `UseSerilog` and `AddSerilog` replace the app's logger factory with Serilog's, which ignores the providers a
-test adds unless it's told otherwise. When the app's factory isn't the framework's, Fixtura sends it one critical log
+test adds unless it's told otherwise, so neither the test output nor `CaptureLogs` and `FailOnAppErrors` would see the
+app's logs. When the app's factory isn't the framework's, Fixtura sends it one critical log
 once the host is built, which the app's other sinks see too. If that log doesn't reach the test output, the build fails
 with an error that names the fix, instead of the output staying empty. Pass `writeToProviders: true`:
 

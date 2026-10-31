@@ -65,6 +65,7 @@ A fixture can override two hooks for setup and cleanup of its own:
 | `ResetDataAsync()` | Puts the fixture's data back to its starting state; see [Resetting data](resetting-data.md) |
 | `WithOverrides(...)` | A second host with extra changes for a few tests; see [Kestrel and per-test overrides](kestrel-and-overrides.md) |
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |
+| `Logs.Current` | What the app logged for the running test, with `host.CaptureLogs()`; see [The app's logs](logs.md) |
 
 ## Waiting for work the app finishes later
 

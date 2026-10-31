@@ -32,11 +32,14 @@ Fixtura.TestHost<TProgram>.EventuallyAsync(System.Action<System.IServiceProvider
 Fixtura.TestHost<TProgram>.EventuallyAsync(System.Func<System.IServiceProvider!, System.Threading.Tasks.Task!>! assertion, System.TimeSpan? timeout = null, System.TimeSpan? advanceClockBy = null) -> System.Threading.Tasks.Task!
 Fixtura.TestHost<TProgram>.HttpFake(string! clientName) -> Fixtura.HttpFake!
 Fixtura.TestHost<TProgram>.HttpFake<TClient>() -> Fixtura.HttpFake!
+Fixtura.TestHost<TProgram>.Logs.get -> Fixtura.TestLogs!
 Fixtura.TestHost<TProgram>.Resource<TResource>() -> TResource
 Fixtura.TestHost<TProgram>.SignInAsync(Fixtura.TestUser! user, string? scheme = null) -> System.Threading.Tasks.Task<Fixtura.SignedInUser!>!
 Fixtura.TestHost<TProgram>.StartHostedServiceAsync<THostedService>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<THostedService!>!
+Fixtura.TestHostBuilder.CaptureLogs() -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Environment.get -> string?
 Fixtura.TestHostBuilder.Environment.set -> void
+Fixtura.TestHostBuilder.FailOnAppErrors(System.Func<Microsoft.Extensions.Logging.Testing.FakeLogRecord!, bool>? except = null) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.FailOnBackgroundServiceCrash() -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
@@ -46,6 +49,8 @@ Fixtura.TestHostBuilder.UseFakeClock(System.DateTimeOffset? start = null) -> Fix
 Fixtura.TestHostBuilder.WebHost(System.Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHttp.Resilience.get -> Fixtura.FakedClientResilience
 Fixtura.TestHttp.Resilience.set -> void
+Fixtura.TestLogs
+Fixtura.TestLogs.Current.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.Logging.Testing.FakeLogRecord!>!
 Fixtura.TestResourceContext
 Fixtura.TestResourceContext.CancellationToken.get -> System.Threading.CancellationToken
 Fixtura.TestResourceContext.NamePrefix.get -> string!
