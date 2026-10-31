@@ -19,12 +19,48 @@
 | Call | Answers |
 | --- | --- |
 | `Respond(method, path, status, json?)` | Requests with that method and path. The path starts with `/`; with a `?` it also matches the query. |
+| `Respond(method, path, responses...)` | The same, with `FakeResponse`s in order, the last one repeating. |
+| `Respond(method, path, when, responses...)` | The same, for requests `when` also accepts, such as by a header or the body. |
 | `Respond(status, json?)` | Every request no method-and-path response matches. |
 | `Respond(request => response)` | The same, with a function. |
 
 Method-and-path responses win over the others, and among those that match, the latest wins, so a test can override a
 response the fixture set. A request nothing answers throws an exception naming the client and the request. JSON is
 written with the web defaults (camelCase).
+
+## Sequences, faults and delays
+
+Tests of retries and circuit breakers need a client that fails first and recovers later. Give a route several
+`FakeResponse`s; each request takes the next, and the last one keeps answering:
+
+```csharp
+host.Http.Fake("rates").Respond(HttpMethod.Get, "/today/EUR",
+    FakeResponse.Status(HttpStatusCode.ServiceUnavailable),
+    FakeResponse.ConnectionFailure(),
+    FakeResponse.Status(HttpStatusCode.OK, new { Currency = "EUR", Rate = 1.1m }));
+```
+
+| `FakeResponse` | What the app sees |
+| --- | --- |
+| `Status(status, json?)` | A response with that status. |
+| `ConnectionFailure()` | The `HttpRequestException` a refused or dropped connection raises. |
+| `Timeout()` | What `HttpClient` throws when its `Timeout` passes, at once. |
+| `.After(delay)` | The same answer, after the delay, unless the app cancels the request first. |
+
+Microsoft's default retry predicate, which `AddStandardResilienceHandler` and `AddRetry` use, doesn't retry `Timeout()`,
+just as it doesn't retry `HttpClient`'s own timeout. To test a timeout the app's retries get through, delay a response
+past the app's attempt timeout with `.After(delay)`.
+
+A condition picks a response by more than the method and path, from the recorded request:
+
+```csharp
+fake.Respond(HttpMethod.Post, "/charges", request => request.Headers.ContainsKey("Idempotency-Key"),
+    FakeResponse.Status(HttpStatusCode.Created));
+```
+
+`fake.VerifyAllResponsesUsed()` throws, listing them, when responses the test set weren't all sent: a route no request
+matched, or the rest of a sequence no request reached. Responses set in `Configure` are the fixture's defaults and
+aren't checked; `ResetDataAsync` starts their sequences over.
 
 ## Recorded requests
 

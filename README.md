@@ -274,6 +274,9 @@ Assert.Equal("sample-key", sent.Headers["X-Api-Key"]);
   handler is replaced, so the app's own handlers, such as retries and auth headers, still run.
   `host.Http.Resilience = FakedClientResilience.Remove` takes resilience handlers, such as
   `AddStandardResilienceHandler`'s retries, off faked clients, so a fake's 503 reaches the app at once.
+- `Respond(method, path, FakeResponse...)` answers in order, for retries: statuses, `ConnectionFailure()`, `Timeout()`
+  and `.After(delay)`; a `when: request => ...` condition matches by header or body, and `VerifyAllResponsesUsed()`
+  checks every response the test set was sent.
 - `Respond(method, path, status, json)` answers one route, and `Respond(status, json)` or `Respond(request => ...)`
   answers everything else. The latest matching response wins. A request nothing answers throws, naming the request.
 - `Requests` lists what the app sent: method, URI, headers and body, with `Json<T>()` to read the body.

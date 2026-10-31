@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 
 namespace Fixtura;
 
@@ -44,37 +43,70 @@ public sealed class HttpFake
             timeout);
 
     /// <summary>Answers every request that no method-and-path response matches, with JSON when given.</summary>
-    public HttpFake Respond(HttpStatusCode status, object? json = null) => Add(new Route(null, null, _ => Response(status, json)));
+    public HttpFake Respond(HttpStatusCode status, object? json = null) =>
+        Add(new Route(null, null, null, [FakeResponse.Status(status, json)]));
 
     /// <summary>Answers every request that no method-and-path response matches.</summary>
-    public HttpFake Respond(Func<HttpRequestMessage, HttpResponseMessage> respond) => Add(new Route(null, null, respond));
+    public HttpFake Respond(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
+        Add(new Route(null, null, null, [FakeResponse.From(respond)]));
 
     /// <summary>
     /// Answers requests with this method and path, with JSON when given. The path is matched against the request's path,
     /// or its path and query when it contains "?". The latest matching response wins.
     /// </summary>
-    public HttpFake Respond(HttpMethod method, string path, HttpStatusCode status, object? json = null)
+    public HttpFake Respond(HttpMethod method, string path, HttpStatusCode status, object? json = null) =>
+        Respond(method, path, FakeResponse.Status(status, json));
+
+    /// <summary>
+    /// Answers requests with this method and path with <paramref name="response"/>, then <paramref name="more"/> in
+    /// order, and keeps repeating the last, as a test of retries needs, such as a 503 and then a 200.
+    /// </summary>
+    public HttpFake Respond(HttpMethod method, string path, FakeResponse response, params FakeResponse[] more) =>
+        Add(new Route(method, CheckedPath(path), null, [response, .. more]));
+
+    /// <summary>
+    /// Answers requests with this method and path that <paramref name="when"/> also accepts, such as by a header or the
+    /// body, with <paramref name="response"/>, then <paramref name="more"/> in order.
+    /// </summary>
+    public HttpFake Respond(HttpMethod method, string path, Func<FakeHttpRequest, bool> when, FakeResponse response,
+        params FakeResponse[] more) =>
+        Add(new Route(method, CheckedPath(path), when, [response, .. more]));
+
+    /// <summary>
+    /// Throws, listing them, when responses set since <c>Configure</c>, or since the last reset, weren't all sent: a
+    /// response no request matched, or the later responses of a sequence no request reached.
+    /// </summary>
+    public void VerifyAllResponsesUsed()
     {
-        // A request's path always starts with "/", so a path without one would never match and fall through silently.
-        if (!path.StartsWith('/'))
+        List<string> unused;
+        lock (_gate)
         {
-            throw new ArgumentException($"Paths start with '/', such as \"/{path}\".", nameof(path));
+            unused = [.. _routes.Where(route => _baseline?.Contains(route) != true && route.Unsent > 0)
+                .Select(route => route.Describe())];
         }
 
-        return Add(new Route(method, path, _ => Response(status, json)));
+        if (unused.Count > 0)
+        {
+            throw new InvalidOperationException($"The fake for HTTP client '{ClientName}' has responses no request "
+                + $"used: {string.Join(", ", unused)}.");
+        }
     }
 
     internal async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Route? route;
+        FakeResponse? next;
         List<string> answered;
         lock (_gate)
         {
-            _requests.Add(new FakeHttpRequest(request.Method, request.RequestUri!, Headers(request), body));
-            route = _routes.LastOrDefault(candidate => candidate.Method is not null && candidate.Matches(request))
+            var recorded = new FakeHttpRequest(request.Method, request.RequestUri!, Headers(request), body);
+            _requests.Add(recorded);
+            route = _routes.LastOrDefault(candidate =>
+                    candidate.Method is not null && candidate.Matches(request, recorded))
                 ?? _routes.LastOrDefault(candidate => candidate.Method is null);
-            answered = route is null ? _routes.Select(candidate => $"{candidate.Method} {candidate.Path}").Distinct().ToList() : [];
+            next = route?.Next();
+            answered = route is null ? _routes.Select(candidate => candidate.Name).Distinct().ToList() : [];
         }
 
         // Without a catch-all every response has a method and path, and listing them shows a typo such as /quote.
@@ -85,7 +117,7 @@ public sealed class HttpFake
                 + $"{request.RequestUri}. {responses}; add one with Respond.");
         }
 
-        HttpResponseMessage response = route.Respond(request);
+        HttpResponseMessage response = await next!.SendAsync(request, cancellationToken);
         response.RequestMessage ??= request;
         return response;
     }
@@ -108,6 +140,10 @@ public sealed class HttpFake
             {
                 _routes.Clear();
                 _routes.AddRange(_baseline);
+                foreach (Route route in _baseline)
+                {
+                    route.Rewind();
+                }
             }
         }
     }
@@ -122,8 +158,10 @@ public sealed class HttpFake
         return this;
     }
 
-    private static HttpResponseMessage Response(HttpStatusCode status, object? json) =>
-        new(status) { Content = json is null ? null : JsonContent.Create(json, json.GetType()) };
+    // A request's path always starts with "/", so a path without one would never match and fall through silently.
+    private static string CheckedPath(string path) => path.StartsWith('/')
+        ? path
+        : throw new ArgumentException($"Paths start with '/', such as \"/{path}\".", nameof(path));
 
     private static Dictionary<string, string> Headers(HttpRequestMessage request)
     {
@@ -144,13 +182,37 @@ public sealed class HttpFake
         return headers;
     }
 
-    private sealed record Route(HttpMethod? Method, string? Path, Func<HttpRequestMessage, HttpResponseMessage> Respond)
+    // Holds where its sequence is; the fake's lock guards it.
+    private sealed class Route(HttpMethod? method, string? path, Func<FakeHttpRequest, bool>? when,
+        FakeResponse[] responses)
     {
-        public bool Matches(HttpRequestMessage request)
+        private int _sent;
+
+        public HttpMethod? Method => method;
+
+        public string? Path => path;
+
+        // A condition can turn away a request this route's method and path match, so the error says it has one.
+        public string Name => when is null ? $"{method} {path}" : $"{method} {path} (when its condition holds)";
+
+        // Responses of the sequence no request has reached yet.
+        public int Unsent => Math.Max(responses.Length - _sent, 0);
+
+        public bool Matches(HttpRequestMessage request, FakeHttpRequest recorded)
         {
             Uri uri = request.RequestUri!;
-            string actual = Path!.Contains('?') ? uri.PathAndQuery : uri.AbsolutePath;
-            return request.Method == Method && actual == Path;
+            string actual = path!.Contains('?') ? uri.PathAndQuery : uri.AbsolutePath;
+            return request.Method == method && actual == path && when?.Invoke(recorded) != false;
+        }
+
+        public FakeResponse Next() => responses[Math.Min(_sent++, responses.Length - 1)];
+
+        public void Rewind() => _sent = 0;
+
+        public string Describe()
+        {
+            string route = method is null ? "the catch-all response" : $"{method} {path}";
+            return responses.Length == 1 ? route : $"{route} ({Unsent} of {responses.Length} unsent)";
         }
     }
 }

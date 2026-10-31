@@ -6,6 +6,11 @@
 Fixtura.FakedClientResilience
 Fixtura.FakedClientResilience.Keep = 0 -> Fixtura.FakedClientResilience
 Fixtura.FakedClientResilience.Remove = 1 -> Fixtura.FakedClientResilience
+Fixtura.FakeResponse
+Fixtura.FakeResponse.After(System.TimeSpan delay) -> Fixtura.FakeResponse!
+Fixtura.HttpFake.Respond(System.Net.Http.HttpMethod! method, string! path, Fixtura.FakeResponse! response, params Fixtura.FakeResponse![]! more) -> Fixtura.HttpFake!
+Fixtura.HttpFake.Respond(System.Net.Http.HttpMethod! method, string! path, System.Func<Fixtura.FakeHttpRequest!, bool>! when, Fixtura.FakeResponse! response, params Fixtura.FakeResponse![]! more) -> Fixtura.HttpFake!
+Fixtura.HttpFake.VerifyAllResponsesUsed() -> void
 Fixtura.HttpFake.WaitForRequestAsync(System.Func<Fixtura.FakeHttpRequest!, bool>? match = null, System.TimeSpan? timeout = null) -> System.Threading.Tasks.Task<Fixtura.FakeHttpRequest!>!
 Fixtura.ITestResource.ProvisionAsync(Fixtura.TestResourceContext! context) -> System.Threading.Tasks.Task<Fixtura.TestResourceStatus!>!
 Fixtura.ITestResource.ResetAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
@@ -65,6 +70,9 @@ Fixtura.TestUserSeedContext.TestUserSeedContext(Fixtura.TestUser! user, System.I
 Fixtura.TestUserSeedContext.User.get -> Fixtura.TestUser!
 Fixtura.TestUsers.Scheme.get -> string?
 Fixtura.TestUsers.Scheme.set -> void
+static Fixtura.FakeResponse.ConnectionFailure() -> Fixtura.FakeResponse!
+static Fixtura.FakeResponse.Status(System.Net.HttpStatusCode status, object? json = null) -> Fixtura.FakeResponse!
+static Fixtura.FakeResponse.Timeout() -> Fixtura.FakeResponse!
 static Fixtura.TestResourceStatus.Ready.get -> Fixtura.TestResourceStatus!
 static Fixtura.TestResourceStatus.Unavailable(string! reason) -> Fixtura.TestResourceStatus!
 virtual Fixtura.TestHost<TProgram>.OnDisposingAsync() -> System.Threading.Tasks.ValueTask
