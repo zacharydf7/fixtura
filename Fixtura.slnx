@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Fixtura.EntityFrameworkCore/Fixtura.EntityFrameworkCore.csproj" />
+    <Project Path="src/Fixtura.Grpc/Fixtura.Grpc.csproj" />
     <Project Path="src/Fixtura.PostgreSql.Testcontainers/Fixtura.PostgreSql.Testcontainers.csproj" />
     <Project Path="src/Fixtura.PostgreSql/Fixtura.PostgreSql.csproj" />
     <Project Path="src/Fixtura.SignalR/Fixtura.SignalR.csproj" />

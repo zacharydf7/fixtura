@@ -173,6 +173,10 @@ or observer to write.</p>
 <p>The test PostgreSQL server in a Docker container, one per test run.</p>
 </div>
 <div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.Grpc">Fixtura.Grpc</a>
+<p>A gRPC channel signed in as a test user, for the clients the gRPC tooling generates.</p>
+</div>
+<div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura.SignalR">Fixtura.SignalR</a>
 <p>Hub connections signed in as a test user, and the messages a hub sends, for a test to wait for.</p>
 </div>

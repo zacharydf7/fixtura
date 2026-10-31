@@ -25,18 +25,22 @@ forwards to others, the app has several bearer schemes, or its endpoints name th
 
 ## Other clients
 
-SignalR connections, WebSockets and browsers aren't built with `CreateClientAsync`, but can still sign in as a test
-user:
+SignalR connections, gRPC channels, WebSockets and browsers aren't built with `CreateClientAsync`, but can still sign
+in as a test user:
 
 - For SignalR, `Fixtura.SignalR`'s `api.CreateHubConnectionAsync("/hubs/orders", user)` does all of it; see
   [SignalR](signalr.md).
-- `CreateHandlerAsync(user)` returns a handler that reaches the app at `api.ClientAddress`, signed in as the user and
-  keeping the cookies the app sets, for another client that takes a handler, such as a gRPC channel:
+- For gRPC, `Fixtura.Grpc`'s `api.CreateGrpcChannelAsync(user)` returns a channel for the client the gRPC tooling
+  generated from the app's .proto file:
 
   ```csharp
-  HttpMessageHandler handler = await api.CreateHandlerAsync(TestUser.Named("ann"));
-  using GrpcChannel channel = GrpcChannel.ForAddress(api.ClientAddress, new GrpcChannelOptions { HttpHandler = handler });
+  using GrpcChannel channel = await api.CreateGrpcChannelAsync(TestUser.Named("ann"));
+  var inventory = new Inventory.InventoryClient(channel);
   ```
+
+  It runs on the in-memory test server. Kestrel serves plain-HTTP gRPC only to an app whose endpoints speak HTTP/2.
+- `CreateHandlerAsync(user)` returns a handler that reaches the app at `api.ClientAddress`, signed in as the user and
+  keeping the cookies the app sets, for any other client that takes a handler.
 
 - `SignInAsync(user)` returns a `SignedInUser` with the `BearerToken` or the `Cookie`, whichever `host.Users.SignIn`
   picks. Send the token from SignalR's `AccessTokenProvider` or a WebSocket request's `Authorization` header, or add

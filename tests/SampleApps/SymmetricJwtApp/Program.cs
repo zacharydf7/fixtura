@@ -2,8 +2,10 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Grpc.Core;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
+using SymmetricJwtApp.Greeting;
 
 namespace SymmetricJwtApp;
 
@@ -32,6 +34,7 @@ public class Program
         });
         builder.Services.AddAuthorization();
         builder.Services.AddSignalR();
+        builder.Services.AddGrpc();
 
         WebApplication app = builder.Build();
         app.UseAuthentication();
@@ -44,6 +47,7 @@ public class Program
         }).RequireAuthorization(policy => policy.RequireRole("Auditor"));
         app.MapHub<EchoHub>("/hubs/echo");
         app.MapHub<GreetingHub>("/hubs/greeting");
+        app.MapGrpcService<GreeterService>();
         app.Run();
     }
 }
@@ -63,4 +67,15 @@ public sealed class EchoHub(ILogger<EchoHub> logger) : Hub
 public sealed class GreetingHub : Hub
 {
     public override Task OnConnectedAsync() => Clients.Caller.SendAsync("Greeted", Context.User!.Identity!.Name);
+}
+
+// Answers a signed-in caller's greeting with its name, over gRPC.
+[Authorize]
+public sealed class GreeterService : Greeter.GreeterBase
+{
+    public override Task<GreetReply> Greet(GreetRequest request, ServerCallContext context) =>
+        Task.FromResult(new GreetReply
+        {
+            Message = $"{request.Greeting}, {context.GetHttpContext().User.Identity!.Name}"
+        });
 }

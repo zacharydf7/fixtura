@@ -62,7 +62,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>
     /// Where the fixture's own clients send their requests: <c>http://localhost</c> on the test server, which only a
     /// handler from <see cref="CreateHandlerAsync"/> reaches, or the app's address on Kestrel. Pair the two for a client
-    /// the fixture doesn't build, such as a gRPC channel.
+    /// the fixture doesn't build; <c>Fixtura.Grpc</c> and <c>Fixtura.SignalR</c> do it for gRPC and SignalR.
     /// </summary>
     public Uri ClientAddress => Factory.ClientOptions.BaseAddress;
 

@@ -26,11 +26,12 @@ dotnet add package Fixtura.SqlServer.Testcontainers
 dotnet add package Fixtura.PostgreSql
 dotnet add package Fixtura.PostgreSql.Testcontainers
 dotnet add package Fixtura.SignalR
+dotnet add package Fixtura.Grpc
 ```
 
 `Fixtura` is the core. Add the others when the app uses EF Core, when tests need a relational database without a
 server, when they need a real SQL Server or PostgreSQL, when that server should run in Docker, and when tests talk to
-the app's SignalR hubs.
+the app's SignalR hubs or gRPC services.
 
 ## A fixture per host shape
 
@@ -242,8 +243,9 @@ HttpClient noRedirects = await api.CreateClientAsync(null, new TestClientOptions
 
 `TestClientOptions` also sets a client's `BaseAddress`, its own `DelegatingHandler`s and the `Scheme` its user signs in
 through. For clients the fixture doesn't build, `api.CreateHandlerAsync(user)` returns a signed-in handler that reaches
-`api.ClientAddress`, such as for a gRPC channel, and `api.SignInAsync(user)` returns the user's `BearerToken` or
-`Cookie`, such as for a WebSocket or a browser, which connect to `api.BaseAddress` on `ServerKind.Kestrel`.
+`api.ClientAddress`, as `Fixtura.Grpc` and `Fixtura.SignalR` use it, and `api.SignInAsync(user)` returns the user's
+`BearerToken` or `Cookie`, such as for a WebSocket or a browser, which connect to `api.BaseAddress` on
+`ServerKind.Kestrel`.
 
 The user signs in through the app's own authentication handler, so its token or cookie events and account checks still
 run, through the app's default authenticate scheme unless `host.Users.Scheme` names another, as an app whose default
@@ -282,6 +284,17 @@ await hub.StartAsync();
 
 `Fixtura.SignalR` connects through the fixture's own handler, signed in as the user, on the test server or Kestrel.
 `Record<T>(method)` keeps what the hub sends that client method, and `WaitForAsync(message => ...)` waits for one.
+
+### gRPC services
+
+```csharp
+using GrpcChannel channel = await api.CreateGrpcChannelAsync(TestUser.Named("ann"));
+var inventory = new Inventory.InventoryClient(channel);
+```
+
+`Fixtura.Grpc` returns a channel through the fixture's own handler, signed in as the user, for the client the gRPC
+tooling generated. It runs on the in-memory test server; Kestrel serves plain-HTTP gRPC only to an app whose endpoints
+speak HTTP/2.
 
 ## Faking outbound HTTP
 

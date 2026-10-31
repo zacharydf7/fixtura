@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option csharp_namespace = "SymmetricJwtApp.Greeting";
+
+package greeting;
+
+service Greeter {
+  rpc Greet (GreetRequest) returns (GreetReply);
+}
+
+message GreetRequest {
+  string greeting = 1;
+}
+
+message GreetReply {
+  string message = 1;
+}

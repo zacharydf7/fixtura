@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Fixtura.PostgreSql\Fixtura.PostgreSql.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.PostgreSql.Testcontainers\Fixtura.PostgreSql.Testcontainers.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.Sqlite\Fixtura.Sqlite.csproj" />
+    <ProjectReference Include="..\..\src\Fixtura.Grpc\Fixtura.Grpc.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.SignalR\Fixtura.SignalR.csproj" />
     <ProjectReference Include="..\..\src\Fixtura.SqlServer.Testcontainers\Fixtura.SqlServer.Testcontainers.csproj" />
     <ProjectReference Include="..\SampleApps\SampleApp\SampleApp.csproj" />

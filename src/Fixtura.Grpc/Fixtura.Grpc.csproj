@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>gRPC for Fixtura test hosts: a gRPC channel to the app's services through the fixture's own handler, signed in as a test user through the app's own authentication, for the clients the gRPC tooling generates.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <!-- Not released yet, so there is no earlier version to validate against. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The oldest version the package needs, so it never forces a consumer's own references to move; checked once,
+         end to end, with Grpc.AspNetCore of the same version; the tests run on the sample app's newer one. -->
+    <PackageReference Include="Grpc.Net.Client" Version="2.52.0" />
+  </ItemGroup>
+
+</Project>
