@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +49,11 @@ builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtSetup>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddAuthorization();
 
+// Each kind of endpoint writes JSON its own way, so a test reading with the defaults would get it wrong.
+builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddControllers()
+    .AddJsonOptions(json => json.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
+
 WebApplication app = builder.Build();
 
 app.UseAuthentication();
@@ -91,6 +98,11 @@ app.MapGet("/swallowed", (ILogger<Program> logger) =>
 });
 app.MapGet("/culture", () => System.Globalization.CultureInfo.CurrentCulture.Name);
 app.MapPost("/parcels/{number}/track", (string number, TrackingClient tracking) => tracking.TrackAsync(number));
+app.MapGet("/parcels/{number}", (string number) => new Parcel(number, ParcelStatus.InTransit));
+app.MapPost("/returns", (ReturnRequest request) => string.IsNullOrWhiteSpace(request.Reason)
+    ? Results.ValidationProblem(new Dictionary<string, string[]> { ["Reason"] = ["Say why the parcel is going back."] })
+    : Results.Ok());
+app.MapControllers();
 
 if (reportsEnabled)
 {

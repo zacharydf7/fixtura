@@ -50,6 +50,7 @@ public sealed class TestHostBuilder
         Users = parent.Users.Copy();
         Http = parent.Http.Copy();
         Server = parent.Server;
+        Json = parent.Json;
         _testOutputLevel = parent._testOutputLevel;
         CapturesLogs = parent.CapturesLogs;
         IsAppErrorFailure = parent.IsAppErrorFailure;
@@ -70,6 +71,12 @@ public sealed class TestHostBuilder
 
     /// <summary>Which server the app runs on; the in-memory <see cref="ServerKind.TestServer"/> unless set.</summary>
     public ServerKind Server { get; set; } = ServerKind.TestServer;
+
+    /// <summary>
+    /// Which of the app's JSON options <c>ReadAsync</c> and <c>ReadProblemAsync</c> read with; those of minimal APIs
+    /// unless set.
+    /// </summary>
+    public AppJson Json { get; set; } = AppJson.MinimalApis;
 
     /// <summary>
     /// The app's environment, such as "Testing" to load <c>appsettings.Testing.json</c>. Development unless set, as

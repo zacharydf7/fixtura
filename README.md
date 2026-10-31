@@ -66,6 +66,11 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>
 `Configure` only records changes. The host is built the first time a test uses the fixture, through `CreateClientAsync`,
 `Services` or `CreateScope`.
 
+`await api.ReadAsync<T>(response)` reads a response's JSON body with the app's own JSON options, and
+`await api.ReadProblemAsync(response, HttpStatusCode.BadRequest)` reads its problem details, with a validation problem's
+`Errors`. Both throw showing the body when it isn't what the test expects. They read with the minimal APIs' options;
+an app whose JSON comes from MVC controllers sets `host.Json = AppJson.Controllers`.
+
 ## Features
 
 Move setup that several fixtures share into a feature. Adding the same feature twice runs it once, so features can build

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Fixtura;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -132,6 +133,23 @@ internal static class GuideSnippets
         host.Settings("""{ "Shop": { "FreeShippingOver": 0 } }""");
         host.Options<ShopOptions>(shop => shop.FreeShippingOver = 0);
         // </settings>
+    }
+
+    public static async Task ReadResponses(TestHostBuilder host, ShopFixture shop, HttpClient client)
+    {
+        // <read-responses>
+        HttpResponseMessage response = await client.PostAsJsonAsync("/orders", new PlaceOrder(1));
+        Order order = await shop.ReadAsync<Order>(response);
+
+        HttpResponseMessage rejected = await client.PostAsJsonAsync("/reviews", new { BookId = 1, Stars = 6 });
+        HttpValidationProblemDetails problem = await shop.ReadProblemAsync(rejected, HttpStatusCode.BadRequest);
+        string[] starErrors = problem.Errors["Stars"];
+        // </read-responses>
+        _ = (order, starErrors);
+
+        // <controllers-json>
+        host.Json = AppJson.Controllers;
+        // </controllers-json>
     }
 
     public static async Task ChangeSettings(TestHost<Program> shop)

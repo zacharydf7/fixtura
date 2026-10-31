@@ -32,8 +32,8 @@ public class ShippingTests(ShippingFixture shop) : IClassFixture<ShippingFixture
 
         HttpResponseMessage response = await client.PostAsJsonAsync("/orders", new PlaceOrder(1), TestContext.Current.CancellationToken);
 
-        Order? order = await response.Content.ReadFromJsonAsync<Order>(TestContext.Current.CancellationToken);
-        Assert.Equal(4.99m, order!.Shipping);
+        Order order = await shop.ReadAsync<Order>(response);
+        Assert.Equal(4.99m, order.Shipping);
         Assert.Equal(1, shop.Shipping.Requests[^1].Json<QuoteRequest>()?.BookId);
     }
 

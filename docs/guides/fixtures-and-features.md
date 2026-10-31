@@ -68,6 +68,24 @@ A fixture can override two hooks for setup and cleanup of its own:
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |
 | `Logs.Current` | What the app logged for the running test, with `host.CaptureLogs()`; see [The app's logs](logs.md) |
 | `Recorder<TService>()` | The calls the app made on a service the fixture records; see [Swapping services](service-swaps.md) |
+| `ReadAsync<T>(response)` | The response's JSON body, read with the app's own JSON options; see below |
+| `ReadProblemAsync(response, status)` | The problem details of a response with that status, such as a validation failure's |
+
+## Reading responses
+
+An app's JSON can differ from the defaults a test reads with, such as enums written as names or a snake_case naming
+policy. The fixture reads with the app's own options instead:
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#read-responses)]
+
+- `ReadAsync<T>` throws when the body isn't a `T`, or is `null`, showing the status and the body, so a 500's error
+  page appears in the failure instead of a JSON exception.
+- `ReadProblemAsync` throws when the response doesn't have the status or holds no problem details, showing the body. Its `Errors` holds a
+  validation problem's messages by field; `Title`, `Detail` and `Extensions` hold the rest.
+- Minimal APIs and MVC controllers keep separate JSON options. The fixture reads with the minimal APIs' unless it says
+  otherwise:
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#controllers-json)]
 
 ## Waiting for work the app finishes later
 

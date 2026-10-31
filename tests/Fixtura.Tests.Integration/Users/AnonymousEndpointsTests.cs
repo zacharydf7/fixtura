@@ -20,8 +20,9 @@ public class AnonymousEndpointsTests(PlainFixture api) : IClassFixture<PlainFixt
 
         Assert.Equal(
         [
-            "GET /carriers", "GET /culture", "GET /home", "GET /payments/{method}", "GET /ping", "GET /rates/{currency}",
-            "GET /swallowed", "POST /parcels/{number}/track"
+            "GET /carriers", "GET /culture", "GET /home", "GET /labels/{number}", "GET /parcels/{number}",
+            "GET /payments/{method}", "GET /ping", "GET /rates/{currency}", "GET /swallowed", "POST /labels", "POST /parcels/{number}/track",
+            "POST /returns"
         ], anonymous);
     }
 }

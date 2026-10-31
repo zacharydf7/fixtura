@@ -67,8 +67,8 @@ public class OrderTests(CustomerFixture shop) : IClassFixture<CustomerFixture>
 
         HttpResponseMessage response = await client.PostAsJsonAsync("/orders", new PlaceOrder(1), TestContext.Current.CancellationToken);
 
-        Order? order = await response.Content.ReadFromJsonAsync<Order>(TestContext.Current.CancellationToken);
-        Assert.Equal(("ann", CustomerFixture.Now), (order!.Customer, order.PlacedAt));
+        Order order = await shop.ReadAsync<Order>(response);
+        Assert.Equal(("ann", CustomerFixture.Now), (order.Customer, order.PlacedAt));
     }
 }
 // </order-tests>

@@ -3,6 +3,9 @@
 *REMOVED*Fixtura.ITestResource.ResetAsync() -> System.Threading.Tasks.Task!
 *REMOVED*Fixtura.ITestUserSeeder.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
 *REMOVED*Fixtura.IdentityUserSeeder<TUser, TRole>.SeedAsync(Fixtura.TestUser! user, System.IServiceProvider! services) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Security.Claims.Claim!>!>!
+Fixtura.AppJson
+Fixtura.AppJson.Controllers = 1 -> Fixtura.AppJson
+Fixtura.AppJson.MinimalApis = 0 -> Fixtura.AppJson
 Fixtura.CallRecorder<TService>
 Fixtura.CallRecorder<TService>.Calls.get -> System.Collections.Generic.IReadOnlyList<Fixtura.RecordedCall!>!
 Fixtura.CallRecorder<TService>.Returns(string! method, System.Func<Fixtura.RecordedCall!, object?>! result) -> Fixtura.CallRecorder<TService!>!
@@ -52,6 +55,8 @@ Fixtura.TestHost<TProgram>.EventuallyAsync(System.Func<System.IServiceProvider!,
 Fixtura.TestHost<TProgram>.HttpFake(string! clientName) -> Fixtura.HttpFake!
 Fixtura.TestHost<TProgram>.HttpFake<TClient>() -> Fixtura.HttpFake!
 Fixtura.TestHost<TProgram>.Logs.get -> Fixtura.TestLogs!
+Fixtura.TestHost<TProgram>.ReadAsync<T>(System.Net.Http.HttpResponseMessage! response) -> System.Threading.Tasks.Task<T>!
+Fixtura.TestHost<TProgram>.ReadProblemAsync(System.Net.Http.HttpResponseMessage! response, System.Net.HttpStatusCode status) -> System.Threading.Tasks.Task<Microsoft.AspNetCore.Http.HttpValidationProblemDetails!>!
 Fixtura.TestHost<TProgram>.Recorder<TService>() -> Fixtura.CallRecorder<TService!>!
 Fixtura.TestHost<TProgram>.Resource<TResource>() -> TResource
 Fixtura.TestHost<TProgram>.SignInAsync(Fixtura.TestUser! user, string? scheme = null) -> System.Threading.Tasks.Task<Fixtura.SignedInUser!>!
@@ -61,6 +66,8 @@ Fixtura.TestHostBuilder.Environment.get -> string?
 Fixtura.TestHostBuilder.Environment.set -> void
 Fixtura.TestHostBuilder.FailOnAppErrors(System.Func<Microsoft.Extensions.Logging.Testing.FakeLogRecord!, bool>? except = null) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.FailOnBackgroundServiceCrash() -> Fixtura.TestHostBuilder!
+Fixtura.TestHostBuilder.Json.get -> Fixtura.AppJson
+Fixtura.TestHostBuilder.Json.set -> void
 Fixtura.TestHostBuilder.OnReset(System.Action<System.IServiceProvider!>! reset) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Options<TOptions>(string! name, System.Action<TOptions!>! configure) -> Fixtura.TestHostBuilder!
 Fixtura.TestHostBuilder.Settings(System.Func<object!>! settings) -> Fixtura.TestHostBuilder!

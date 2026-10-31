@@ -1,12 +1,15 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.ExceptionServices;
+using System.Text.Json;
 using Fixtura.Settings;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -379,6 +382,51 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
     /// <summary>The app's clock, which a test advances with <c>Advance</c> or <c>SetUtcNow</c>; set up with <c>host.UseFakeClock()</c>.</summary>
     public FakeTimeProvider Clock =>
         _builder.Clock ?? throw new InvalidOperationException("Clock needs host.UseFakeClock() in the fixture's Configure.");
+
+    /// <summary>
+    /// Reads a response's JSON body as <typeparamref name="T"/> with the app's own JSON options, those
+    /// <see cref="TestHostBuilder.Json"/> names, so its converters and naming policy apply. Throws, showing the status and
+    /// the body, when the body isn't a <typeparamref name="T"/> or is <c>null</c>.
+    /// </summary>
+    public async Task<T> ReadAsync<T>(HttpResponseMessage response)
+    {
+        JsonSerializerOptions options = AppJsonOptions((await FactoryAsync()).Services);
+        string body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<T>(body, options) ?? throw new JsonException("The body is null.");
+        }
+        catch (JsonException error)
+        {
+            throw new InvalidOperationException(
+                $"The app's {(int)response.StatusCode} response isn't a {TypeNames.Readable(typeof(T))}: {body}", error);
+        }
+    }
+
+    /// <summary>
+    /// Reads the problem details of a response that should have <paramref name="status"/>, such as a validation failure's
+    /// 400, with the app's own JSON options. <c>Errors</c> holds a validation problem's messages by field. Throws, showing
+    /// the body, when the status differs or the body isn't problem details (<c>application/problem+json</c>).
+    /// </summary>
+    public async Task<HttpValidationProblemDetails> ReadProblemAsync(HttpResponseMessage response, HttpStatusCode status)
+    {
+        string? failure = response.StatusCode != status
+            ? $"Expected {(int)status} {status}, but the app answered {(int)response.StatusCode} {response.StatusCode}"
+            : response.Content.Headers.ContentType?.MediaType != "application/problem+json"
+                ? $"The app's {(int)status} response holds no problem details"
+                : null;
+        if (failure is not null)
+        {
+            string body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"{failure}: {body}");
+        }
+
+        return await ReadAsync<HttpValidationProblemDetails>(response);
+    }
+
+    private JsonSerializerOptions AppJsonOptions(IServiceProvider services) => _builder.Json == AppJson.Controllers
+        ? services.GetRequiredService<IOptions<Microsoft.AspNetCore.Mvc.JsonOptions>>().Value.JsonSerializerOptions
+        : services.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
 
     /// <summary>
     /// Changes settings while the host runs, without a rebuild, with an object shaped like appsettings.json as
