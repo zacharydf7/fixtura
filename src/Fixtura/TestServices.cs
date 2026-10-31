@@ -7,10 +7,12 @@ namespace Fixtura;
 public sealed class TestServices
 {
     private readonly List<Action<IServiceCollection>> _steps;
+    private readonly Recorders _recorders;
 
-    internal TestServices(List<Action<IServiceCollection>> steps)
+    internal TestServices(List<Action<IServiceCollection>> steps, Recorders recorders)
     {
         _steps = steps;
+        _recorders = recorders;
     }
 
     /// <summary>Anything the typed swaps don't cover, as plain service-collection code.</summary>
@@ -34,6 +36,22 @@ public sealed class TestServices
         Configure(services => services.ReplaceKeyed<TService, TImplementation>(key));
 
     public TestServices Remove<TService>() => Configure(services => services.Remove<TService>());
+
+    /// <summary>
+    /// Replaces every registration of <typeparamref name="TService"/>, an interface, with one that records the app's calls,
+    /// such as the emails an <c>IEmailSender</c> was asked to send, for a test to read through the fixture's
+    /// <c>Recorder&lt;TService&gt;()</c>. Calls return a completed task or a default value unless a test sets a result.
+    /// </summary>
+    public TestServices Record<TService>() where TService : class
+    {
+        CallRecorder<TService> recorder = _recorders.Add<TService>();
+        return Configure(services =>
+        {
+            ServiceCollectionSwaps.RemoveWhere(services, $"Record<{TypeNames.Readable(typeof(TService))}>",
+                descriptor => descriptor.ServiceType == typeof(TService) && !descriptor.IsKeyedService);
+            services.AddSingleton(recorder.Service);
+        });
+    }
 
     public TestServices RemoveHostedService<THostedService>() where THostedService : IHostedService =>
         Configure(services => services.RemoveHostedService<THostedService>());

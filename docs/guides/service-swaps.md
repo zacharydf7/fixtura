@@ -12,12 +12,35 @@
 | `Remove<TService>()` | Removes every registration of the service. |
 | `RemoveHostedService<THostedService>()` | Removes a hosted service registered with `AddHostedService<T>()` or its factory overload. |
 | `DeferHostedService<THostedService>()` | Keeps a hosted service from starting with the host, until a test starts it; see below. |
+| `Record<TService>()` | Replaces an interface with a stand-in that records the app's calls; see below. |
 | `Configure(services => ...)` | Anything else, as plain `IServiceCollection` code. |
 
 ## Renamed services fail loudly
 
 Every typed swap throws `NothingMatchedException` when the app has no matching registration. When someone renames
 `RestockReminder`, the test run fails at the swap instead of quietly testing with the reminder still running.
+
+## Recording calls
+
+`Record<TService>()` stands in for an interface whose effects leave the process, such as an email sender or a message
+publisher, and keeps every call the app makes for a test to read:
+
+```csharp
+host.Services.Record<IEmailSender<AppUser>>();   // in Configure
+
+await client.PostAsJsonAsync("/register", new { Email = "ann@sample.test", Password = "Pa55word!" });
+
+RecordedCall sent = Assert.Single(api.Recorder<IEmailSender<AppUser>>().Calls);
+string link = sent.Arg<string>("confirmationLink");
+```
+
+- Each `RecordedCall` has the `Method` name and the `Arguments`; `Arg<T>(name)` reads one by its parameter's name.
+- Calls answer with a completed task, or a default value. `Returns(nameof(IRates.GetRateAsync), call => 1.1m)` answers a
+  method with a result instead; a task's result is given as is.
+- `WaitForCallAsync(call => ...)` waits for a call the app makes after the request returns, such as from a background
+  service.
+- `ResetDataAsync` clears the calls and brings back the results set in `Configure`.
+- The service must be an interface, and like the other swaps, `Record` throws when the app registers no such service.
 
 ## Hosted services under test control
 

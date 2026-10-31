@@ -176,6 +176,12 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
         ? _builder.Logs
         : throw new InvalidOperationException("The fixture captures no logs; call host.CaptureLogs() in Configure.");
 
+    /// <summary>
+    /// The calls the app made on <typeparamref name="TService"/>, which the fixture records with
+    /// <c>host.Services.Record&lt;TService&gt;()</c>.
+    /// </summary>
+    public CallRecorder<TService> Recorder<TService>() where TService : class => _builder.Recorders.Find<TService>();
+
     /// <summary>The one resource of this type the fixture added in <c>Configure</c>, such as its database server.</summary>
     public TResource Resource<TResource>() where TResource : ITestResource => _builder.FindResource<TResource>();
 
@@ -365,9 +371,9 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
     /// <summary>
     /// Puts the fixture's data back to its starting state: each resource resets, such as SQL Server emptying its tables,
-    /// HTTP fakes forget their requests and a test's responses, then the steps added with
-    /// <see cref="TestHostBuilder.OnReset(Func{IServiceProvider, Task})"/> run. Call it before a test, never while another
-    /// test uses the same fixture, as tests sharing an assembly fixture can.
+    /// HTTP fakes and call recorders forget their requests and calls and a test's responses and results, then the steps
+    /// added with <see cref="TestHostBuilder.OnReset(Func{IServiceProvider, Task})"/> run. Call it before a test, never
+    /// while another test uses the same fixture, as tests sharing an assembly fixture can.
     /// </summary>
     public Task ResetDataAsync()
     {

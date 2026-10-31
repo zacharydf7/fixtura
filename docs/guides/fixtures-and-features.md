@@ -66,6 +66,7 @@ A fixture can override two hooks for setup and cleanup of its own:
 | `WithOverrides(...)` | A second host with extra changes for a few tests; see [Kestrel and per-test overrides](kestrel-and-overrides.md) |
 | `BaseAddress` | Where a browser or another process reaches a Kestrel-hosted app |
 | `Logs.Current` | What the app logged for the running test, with `host.CaptureLogs()`; see [The app's logs](logs.md) |
+| `Recorder<TService>()` | The calls the app made on a service the fixture records; see [Swapping services](service-swaps.md) |
 
 ## Waiting for work the app finishes later
 

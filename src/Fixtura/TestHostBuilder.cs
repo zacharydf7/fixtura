@@ -28,7 +28,7 @@ public sealed class TestHostBuilder
 
     internal TestHostBuilder()
     {
-        Services = new TestServices(_serviceSteps);
+        Services = new TestServices(_serviceSteps, Recorders);
     }
 
     // A copy for WithOverrides: the parent's steps, settings and names, but none of its resources, which the parent owns.
@@ -43,6 +43,8 @@ public sealed class TestHostBuilder
         Environment = parent.Environment;
         _settings.AddRange(parent._settings);
         _namePrefix = parent._namePrefix;
+        Recorders = parent.Recorders.Copy();
+        Services = new TestServices(_serviceSteps, Recorders);
         IsOverride = true;
         Users = parent.Users.Copy();
         Http = parent.Http.Copy();
@@ -88,6 +90,8 @@ public sealed class TestHostBuilder
     internal bool CapturesLogs { get; private set; }
 
     internal TestLogs Logs { get; } = new();
+
+    internal Recorders Recorders { get; } = new();
 
     internal Func<FakeLogRecord, bool>? IsAppErrorFailure { get; private set; }
 
@@ -370,7 +374,11 @@ public sealed class TestHostBuilder
     }
 
     // Responses set while configuring are what a reset brings back.
-    internal void EndConfigure() => Http.SaveBaseline();
+    internal void EndConfigure()
+    {
+        Http.SaveBaseline();
+        Recorders.SaveBaseline();
+    }
 
     // An override resets its parent's resources, because it shares their data.
     internal async Task ResetAsync(IServiceProvider? services)
@@ -382,6 +390,7 @@ public sealed class TestHostBuilder
         }
 
         Http.Reset();
+        Recorders.Reset();
 
         if (services is null)
         {

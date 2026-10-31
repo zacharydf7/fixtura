@@ -100,6 +100,7 @@ api.CreateScopeAsync()` builds the host without blocking a thread.
 | `Remove<TService>()` | Removes every registration of the service |
 | `RemoveHostedService<THostedService>()` | Removes a hosted service registered with `AddHostedService<T>()` or its factory overload |
 | `DeferHostedService<THostedService>()` | Keeps a hosted service from starting with the host, until a test calls `api.StartHostedServiceAsync<T>()` |
+| `Record<TService>()` | Replaces an interface, such as an email sender, with a stand-in whose calls a test reads with `api.Recorder<TService>().Calls` |
 | `Configure(services => ...)` | Anything else, as plain `IServiceCollection` code |
 
 Every typed swap throws `NothingMatchedException` when the app has no matching registration, so a renamed service fails
