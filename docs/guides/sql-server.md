@@ -34,9 +34,7 @@ Each fixture creates its databases, and the app creates their schema, which take
 test classes each get their own instance of one fixture class, `ReuseDatabases = true` hands a fixture's databases on
 instead of dropping them:
 
-```csharp
-SqlServerResource sql = host.AddSqlServer(new SqlServerOptions { ReuseDatabases = true });
-```
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#reuse-databases)]
 
 - When a fixture is done, its databases are reset, as `ResetDataAsync` would, and kept for the next fixture of the same
   type on the same server. That fixture's host starts on databases the app has already created.

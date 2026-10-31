@@ -33,12 +33,7 @@ written with the web defaults (camelCase).
 Tests of retries and circuit breakers need a client that fails first and recovers later. Give a route several
 `FakeResponse`s; each request takes the next, and the last one keeps answering:
 
-```csharp
-host.Http.Fake("rates").Respond(HttpMethod.Get, "/today/EUR",
-    FakeResponse.Status(HttpStatusCode.ServiceUnavailable),
-    FakeResponse.ConnectionFailure(),
-    FakeResponse.Status(HttpStatusCode.OK, new { Currency = "EUR", Rate = 1.1m }));
-```
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#http-sequences)]
 
 | `FakeResponse` | What the app sees |
 | --- | --- |
@@ -53,10 +48,7 @@ past the app's attempt timeout with `.After(delay)`.
 
 A condition picks a response by more than the method and path, from the recorded request:
 
-```csharp
-fake.Respond(HttpMethod.Post, "/charges", request => request.Headers.ContainsKey("Idempotency-Key"),
-    FakeResponse.Status(HttpStatusCode.Created));
-```
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#http-conditions)]
 
 `fake.VerifyAllResponsesUsed()` throws, listing them, when responses the test set weren't all sent: a route no request
 matched, or the rest of a sequence no request reached. Responses set in `Configure` are the fixture's defaults and

@@ -37,4 +37,5 @@ The whole file is [PartnerApi.cs](https://github.com/zacharydf7/fixtura/blob/mai
 ## What you have
 
 Bookshop's tests now cover sign-in, settings, a real database and an outside partner, with three short fixtures and no
-setup inside any test. The [guides](../guides/fixtures-and-features.md) cover each feature in more depth.
+setup inside any test. The [guides](../guides/fixtures-and-features.md) cover each feature in more depth, and
+[Test a real-time hub](test-a-hub.md) adds a SignalR hub.

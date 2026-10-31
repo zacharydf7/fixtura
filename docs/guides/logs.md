@@ -22,16 +22,12 @@ Logging to test output is off unless a fixture asks for it.
 
 ## Asserting on logs
 
-`host.CaptureLogs()` keeps what the app logs for each test, so a test can check that the app logged a warning, for
-example:
+`host.CaptureLogs()` keeps what the app logs for each test, so a test can check what the app logged, such as the line
+Bookshop writes for each order:
 
-```csharp
-await client.PostAsync("/orders", content);
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#capture-logs)]
 
-Assert.Contains(api.Logs.Current, log => log.Level == LogLevel.Warning && log.Message.Contains("low stock"));
-```
-
-`api.Logs.Current` holds the running test's `FakeLogRecord`s, oldest first: those the app logged while handling the
+`shop.Logs.Current` holds the running test's `FakeLogRecord`s, oldest first: those the app logged while handling the
 test's requests through the fixture's clients, and those of work the test ran itself, such as a service it called. The
 app's own `Logging` settings filter them, as they do the test output. Logs that belong to no test, such as start-up's
 or a background service's, aren't kept.
@@ -42,9 +38,7 @@ A response can look fine while the app logged an exception it swallowed. `host.F
 app logs while handling a request from the fixture's clients into a failure: the request throws in the test, listing
 the errors. Errors a test expects can pass:
 
-```csharp
-host.FailOnAppErrors(except: error => error.Category == "Shop.Payments" && error.Exception is TimeoutException);
-```
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#fail-on-app-errors)]
 
 An unhandled exception that becomes a 500 is logged as an error too, so a test that expects a 500 needs `except`. The
 check runs once the app starts its response, without waiting for a body that may stream without end, so errors logged

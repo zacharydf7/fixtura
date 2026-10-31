@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\..\src\Fixtura\Fixtura.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.EntityFrameworkCore\Fixtura.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.PostgreSql.Testcontainers\Fixtura.PostgreSql.Testcontainers.csproj" />
+    <ProjectReference Include="..\..\..\src\Fixtura.SignalR\Fixtura.SignalR.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.Sqlite\Fixtura.Sqlite.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.SqlServer\Fixtura.SqlServer.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.SqlServer.Testcontainers\Fixtura.SqlServer.Testcontainers.csproj" />

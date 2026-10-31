@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bookshop;
@@ -49,6 +51,12 @@ public sealed class ShopOptions
 public sealed record PlaceOrder(int BookId);
 
 public sealed record Quote(decimal Price);
+
+// <order-feed>
+// Shows the staff each order as it's placed.
+[Authorize(Roles = "Clerk")]
+public sealed class OrderFeed : Hub;
+// </order-feed>
 
 // The shipping partner's API, which tests must not call for real.
 public sealed class ShippingClient(HttpClient http)

@@ -4,3 +4,5 @@
   href: test-against-sql-server.md
 - name: Fake a partner API
   href: fake-a-partner-api.md
+- name: Test a real-time hub
+  href: test-a-hub.md

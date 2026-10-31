@@ -25,14 +25,7 @@ Every typed swap throws `NothingMatchedException` when the app has no matching r
 `Record<TService>()` stands in for an interface whose effects leave the process, such as an email sender or a message
 publisher, and keeps every call the app makes for a test to read:
 
-```csharp
-host.Services.Record<IEmailSender<AppUser>>();   // in Configure
-
-await client.PostAsJsonAsync("/register", new { Email = "ann@sample.test", Password = "Pa55word!" });
-
-RecordedCall sent = Assert.Single(api.Recorder<IEmailSender<AppUser>>().Calls);
-string link = sent.Arg<string>("confirmationLink");
-```
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#record-calls)]
 
 - Each `RecordedCall` has the `Method` name and the `Arguments`; `Arg<T>(name)` reads one by its parameter's name.
 - Calls answer with a completed task, or a default value. `Returns(nameof(IRates.GetRateAsync), call => 1.1m)` answers a

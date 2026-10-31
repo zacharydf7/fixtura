@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using Fixtura;
 using Microsoft.AspNetCore.Identity;
@@ -173,6 +174,49 @@ internal static class GuideSnippets
         _ = (apiKey, body);
     }
 
+    public static void HttpSequences(TestHostBuilder host, HttpFake fake)
+    {
+        // <http-sequences>
+        host.Http.Fake("rates").Respond(HttpMethod.Get, "/today/EUR",
+            FakeResponse.Status(HttpStatusCode.ServiceUnavailable),
+            FakeResponse.ConnectionFailure(),
+            FakeResponse.Status(HttpStatusCode.OK, new { Currency = "EUR", Rate = 1.1m }));
+        // </http-sequences>
+
+        // <http-conditions>
+        fake.Respond(HttpMethod.Post, "/charges", request => request.Headers.ContainsKey("Idempotency-Key"),
+            FakeResponse.Status(HttpStatusCode.Created));
+        // </http-conditions>
+    }
+
+    public static async Task RecordCalls(TestHostBuilder host, ShopFixture shop, HttpClient client)
+    {
+        // <record-calls>
+        host.Services.Record<IOrderEmails>();   // in Configure
+
+        await client.PostAsJsonAsync("/orders", new PlaceOrder(1));
+
+        RecordedCall sent = Assert.Single(shop.Recorder<IOrderEmails>().Calls);
+        string customer = sent.Arg<string>("customer");
+        // </record-calls>
+        _ = customer;
+    }
+
+    public static async Task LogAssertions(TestHostBuilder host, ShopFixture shop, HttpClient client)
+    {
+        // <capture-logs>
+        host.CaptureLogs();   // in Configure
+
+        await client.PostAsJsonAsync("/orders", new PlaceOrder(1));
+
+        Assert.Contains(shop.Logs.Current, log => log.Level == LogLevel.Information && log.Message.Contains("placed for ann"));
+        // </capture-logs>
+
+        // <fail-on-app-errors>
+        host.FailOnAppErrors(except: error => error.Category == "Bookshop.Payments" && error.Exception is TimeoutException);
+        // </fail-on-app-errors>
+    }
+
     public static void Logs(TestHostBuilder host)
     {
         // <logs>
@@ -204,6 +248,14 @@ internal static class GuideSnippets
         host.OnReset(services => services.GetRequiredService<MemoryAuditTrail>().Clear());
         host.AddResource(new QueueResource());
         // </on-reset>
+    }
+
+    public static void ReuseDatabases(TestHostBuilder host)
+    {
+        // <reuse-databases>
+        SqlServerResource sql = host.AddSqlServer(new SqlServerOptions { ReuseDatabases = true });
+        // </reuse-databases>
+        _ = sql;
     }
 
     public static async Task KestrelAndOverrides(TestHostBuilder host, ShopFixture shop)
@@ -295,6 +347,11 @@ public sealed class MemoryAuditTrail : IAuditTrail
 public sealed class ArchiveDb(DbContextOptions<ArchiveDb> options) : DbContext(options);
 
 public sealed record QuoteBody(int BookId);
+
+public interface IOrderEmails
+{
+    Task SendConfirmationAsync(string customer, int orderId);
+}
 
 public sealed class StaffDirectory
 {

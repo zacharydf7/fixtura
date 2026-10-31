@@ -71,6 +71,11 @@ schema.</p>
 <h3><i class="bi bi-terminal" aria-hidden="true"></i>Logs where you look</h3>
 <p>The app's logs land in the output of the test that caused them, so a failing 500 comes with its reason.</p>
 </a>
+<a class="fx-card" href="guides/signalr.md">
+<h3><i class="bi bi-broadcast" aria-hidden="true"></i>Hubs without the plumbing</h3>
+<p>Connect to a SignalR hub signed in as a test user, then wait for the message the hub sends, with no handler factory
+or observer to write.</p>
+</a>
 <a class="fx-card" href="guides/fixtures-and-features.md">
 <h3><i class="bi bi-puzzle" aria-hidden="true"></i>Features that compose</h3>
 <p>Write shared setup once as a feature and add it to any fixture. Adding a feature twice runs it once.</p>
@@ -94,6 +99,7 @@ schema.</p>
 <li><a href="tutorials/test-a-secured-api.md">Test a secured API</a></li>
 <li><a href="tutorials/test-against-sql-server.md">Test against SQL Server</a></li>
 <li><a href="tutorials/fake-a-partner-api.md">Fake a partner API</a></li>
+<li><a href="tutorials/test-a-hub.md">Test a real-time hub</a></li>
 </ul>
 </div>
 <div class="fx-path">
@@ -111,13 +117,16 @@ schema.</p>
 <li><a href="guides/test-users.md">Test users</a></li>
 <li><a href="guides/http-fakes.md">Faking outbound HTTP</a></li>
 <li><a href="guides/logs.md">The app's logs</a></li>
+<li><a href="guides/signalr.md">SignalR</a></li>
 <li><a href="guides/kestrel-and-overrides.md">Kestrel and per-test overrides</a></li>
 </ul>
 </div>
 <div class="fx-path">
 <h3><i class="bi bi-database" aria-hidden="true"></i>Data and running tests</h3>
 <ul>
+<li><a href="guides/sqlite.md">SQLite in memory</a></li>
 <li><a href="guides/sql-server.md">SQL Server</a></li>
+<li><a href="guides/postgresql.md">PostgreSQL</a></li>
 <li><a href="guides/resetting-data.md">Resetting data</a></li>
 <li><a href="guides/ci.md">Running in CI</a></li>
 <li><a href="guides/troubleshooting.md">Troubleshooting</a></li>
@@ -137,7 +146,7 @@ schema.</p>
 <div class="fx-packages">
 <div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura">Fixtura</a>
-<p>The core: fixtures, features, swaps, settings, test users, HTTP fakes, logs and resets.</p>
+<p>The core: fixtures, features, swaps, recorded calls, settings, test users, HTTP fakes, logs and resets.</p>
 </div>
 <div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura.EntityFrameworkCore">Fixtura.EntityFrameworkCore</a>
@@ -150,6 +159,22 @@ schema.</p>
 <div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura.SqlServer.Testcontainers">Fixtura.SqlServer.Testcontainers</a>
 <p>The test SQL Server in a Docker container, one per test run.</p>
+</div>
+<div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.Sqlite">Fixtura.Sqlite</a>
+<p>SQLite databases in memory, one per name per fixture: a relational stand-in that needs no server.</p>
+</div>
+<div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.PostgreSql">Fixtura.PostgreSql</a>
+<p>A PostgreSQL database per fixture, emptied between tests.</p>
+</div>
+<div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.PostgreSql.Testcontainers">Fixtura.PostgreSql.Testcontainers</a>
+<p>The test PostgreSQL server in a Docker container, one per test run.</p>
+</div>
+<div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.SignalR">Fixtura.SignalR</a>
+<p>Hub connections signed in as a test user, and the messages a hub sends, for a test to wait for.</p>
 </div>
 </div>
 </div>

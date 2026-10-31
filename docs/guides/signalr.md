@@ -3,15 +3,9 @@
 The `Fixtura.SignalR` package connects a test to the app's hubs, signed in as a test user, and keeps the messages a hub
 sends the client, so a test can wait for one instead of writing its own observer:
 
-```csharp
-await using HubConnection hub = await api.CreateHubConnectionAsync("/hubs/jobs", TestUser.Named("ann"));
-HubMessages<JobUpdate> updates = hub.Record<JobUpdate>("JobUpdated");
-await hub.StartAsync();
+[!code-csharp[](../samples/Bookshop.Tests/OrderFeed.cs#hub-connection)]
 
-await hub.InvokeAsync("Watch", jobId);
-
-JobUpdate update = await updates.WaitForAsync(update => update.JobId == jobId);
-```
+The [Test a real-time hub](../tutorials/test-a-hub.md) tutorial builds this up step by step.
 
 ## Connecting
 
@@ -24,7 +18,7 @@ JobUpdate update = await updates.WaitForAsync(update => update.JobId == jobId);
 - The connection uses long polling, the transport the test server can serve through a handler. The hub's code runs the
   same as over WebSockets.
 - The hub's logs go to the test that connected, with `LogToTestOutput` or `CaptureLogs`.
-- `configure` changes the connection further, such as its JSON options: `api.CreateHubConnectionAsync("/hubs/jobs",
+- `configure` changes the connection further, such as its JSON options: `shop.CreateHubConnectionAsync("/hubs/orders",
   user, hub => hub.AddJsonProtocol(...))`.
 
 ## Waiting for messages

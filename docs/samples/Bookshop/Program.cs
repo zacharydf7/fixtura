@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using Bookshop;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +26,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
 
 WebApplication app = builder.Build();
 
@@ -39,7 +41,7 @@ app.UseAuthorization();
 app.MapGet("/books", (ShopDb db) => db.Books.OrderBy(book => book.Id).ToListAsync());
 
 app.MapPost("/orders", async (PlaceOrder request, ClaimsPrincipal user, ShopDb db, ShippingClient shipping,
-    IOptions<ShopOptions> shop, TimeProvider clock, ILogger<Program> logger) =>
+    IOptions<ShopOptions> shop, TimeProvider clock, IHubContext<OrderFeed> feed, ILogger<Program> logger) =>
 {
     Book? book = await db.Books.FindAsync(request.BookId);
     if (book is null)
@@ -52,10 +54,13 @@ app.MapPost("/orders", async (PlaceOrder request, ClaimsPrincipal user, ShopDb d
     db.Orders.Add(order);
     await db.SaveChangesAsync();
     logger.LogInformation("Order {OrderId} placed for {Customer}.", order.Id, order.Customer);
+    await feed.Clients.All.SendAsync("OrderPlaced", order);
     return Results.Created($"/orders/{order.Id}", order);
 }).RequireAuthorization(policy => policy.RequireRole("Customer"));
 
 app.MapGet("/orders/mine", (ClaimsPrincipal user, ShopDb db) =>
     db.Orders.Where(order => order.Customer == user.Identity!.Name).ToListAsync()).RequireAuthorization();
+
+app.MapHub<OrderFeed>("/hubs/orders");
 
 app.Run();
