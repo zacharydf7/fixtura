@@ -290,11 +290,14 @@ public sealed class TestHostBuilder
     internal TestHostBuilder CopyForOverrides() => new(this);
 
     // The first unavailable resource skips the rest, which may depend on it.
-    internal async Task<string?> ProvisionAsync()
+    internal async Task<string?> ProvisionAsync(Type fixtureType)
     {
         foreach (ITestResource resource in _resources)
         {
-            var context = new TestResourceContext(_namePrefix, TestContext.Current.CancellationToken);
+            var context = new TestResourceContext(_namePrefix, TestContext.Current.CancellationToken)
+            {
+                FixtureType = fixtureType
+            };
             TestResourceStatus status = await resource.ProvisionAsync(context);
             if (status.UnavailableReason is not null)
             {

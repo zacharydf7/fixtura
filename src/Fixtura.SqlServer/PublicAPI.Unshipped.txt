@@ -8,6 +8,8 @@
 *REMOVED*static Fixtura.SqlServerTestHostExtensions.UseSqlServer(this Fixtura.TestHostBuilder! host, Fixtura.SqlServerOptions! options) -> Fixtura.SqlServerResource!
 Fixtura.SqlServerOptions.RequiredWhenVariableIsTrue.get -> string?
 Fixtura.SqlServerOptions.RequiredWhenVariableIsTrue.init -> void
+Fixtura.SqlServerOptions.ReuseDatabases.get -> bool
+Fixtura.SqlServerOptions.ReuseDatabases.init -> void
 Fixtura.SqlServerResource.ConnectionString(string! name) -> string!
 Fixtura.SqlServerResource.ProvisionAsync(Fixtura.TestResourceContext! context) -> System.Threading.Tasks.Task<Fixtura.TestResourceStatus!>!
 Fixtura.SqlServerResource.ResetAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!

@@ -142,11 +142,11 @@ public class SqlServerResourceTests
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
         var probe = new SqlConnectionStringBuilder(sql.ConnectionString("Probe"));
         string database = probe.InitialCatalog;
-        await ExecuteAsync(probe, $"CREATE DATABASE [{database}]", database);
+        await SqlProbe.ExecuteAsync(probe, $"CREATE DATABASE [{database}]", database);
 
         await sql.DisposeAsync();
 
-        Assert.Equal(0, await ExecuteAsync(probe, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", database));
+        Assert.Equal(0, await SqlProbe.ExecuteAsync(probe, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", database));
     }
 
     // Leftovers get their own name stem here, so a sweep with no age limit can't drop a parallel fixture's databases.
@@ -156,15 +156,15 @@ public class SqlServerResourceTests
         SqlConnectionStringBuilder server = await ServerOrSkipAsync();
         string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
         string other = $"sweep_other_{Guid.NewGuid().ToString("N")[..8]}";
-        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
-        await ExecuteAsync(server, $"CREATE DATABASE [{other}]", other);
+        await SqlProbe.ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+        await SqlProbe.ExecuteAsync(server, $"CREATE DATABASE [{other}]", other);
 
         await SqlServerResource.SweepLeftoversAsync(server.ConnectionString, SqlServerResource.LeftoverPattern("sweep_00000000"),
             olderThan: TimeSpan.Zero);
 
-        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
-        int others = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", other);
-        await ExecuteAsync(server, $"DROP DATABASE [{other}]", other);
+        int leftovers = await SqlProbe.ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        int others = await SqlProbe.ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", other);
+        await SqlProbe.ExecuteAsync(server, $"DROP DATABASE [{other}]", other);
         Assert.Equal((0, 1), (leftovers, others));
     }
 
@@ -173,13 +173,13 @@ public class SqlServerResourceTests
     {
         SqlConnectionStringBuilder server = await ServerOrSkipAsync();
         string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
-        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+        await SqlProbe.ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
 
         await SqlServerResource.SweepLeftoversAsync(server.ConnectionString, SqlServerResource.LeftoverPattern("sweep_00000000"),
             olderThan: TimeSpan.FromHours(1));
 
-        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
-        await ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
+        int leftovers = await SqlProbe.ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        await SqlProbe.ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
         Assert.Equal(1, leftovers);
     }
 
@@ -189,7 +189,7 @@ public class SqlServerResourceTests
     {
         SqlConnectionStringBuilder server = await ServerOrSkipAsync();
         string leftover = $"sweep_{Guid.NewGuid().ToString("N")[..8]}_Orders";
-        await ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
+        await SqlProbe.ExecuteAsync(server, $"CREATE DATABASE [{leftover}]", leftover);
         var inUse = new SqlConnectionStringBuilder(server.ConnectionString) { InitialCatalog = leftover, Pooling = false };
         await using (var connection = new SqlConnection(inUse.ConnectionString))
         {
@@ -199,8 +199,8 @@ public class SqlServerResourceTests
                 olderThan: TimeSpan.Zero);
         }
 
-        int leftovers = await ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
-        await ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
+        int leftovers = await SqlProbe.ExecuteAsync(server, "SELECT COUNT(*) FROM sys.databases WHERE name = @name", leftover);
+        await SqlProbe.ExecuteAsync(server, $"DROP DATABASE [{leftover}]", leftover);
         Assert.Equal(1, leftovers);
     }
 
@@ -216,15 +216,5 @@ public class SqlServerResourceTests
         string? unavailable = (await sql.ProvisionAsync(context)).UnavailableReason;
         Assert.SkipWhen(unavailable is not null, unavailable ?? "");
         return new SqlConnectionStringBuilder(sql.ConnectionString("Unused")) { InitialCatalog = "" };
-    }
-
-    private static async Task<int> ExecuteAsync(SqlConnectionStringBuilder server, string sql, string database)
-    {
-        var master = new SqlConnectionStringBuilder(server.ConnectionString) { InitialCatalog = "master" };
-        await using var connection = new SqlConnection(master.ConnectionString);
-        await connection.OpenAsync(TestContext.Current.CancellationToken);
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@name", database);
-        return Convert.ToInt32(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 }

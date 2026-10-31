@@ -153,7 +153,7 @@ public abstract class TestHost<TProgram> : IAsyncLifetime where TProgram : class
 
         Configure(_builder);
         _builder.EndConfigure();
-        _skipReason = await _builder.ProvisionAsync();
+        _skipReason = await _builder.ProvisionAsync(GetType());
         if (_skipReason is null)
         {
             await OnInitializedAsync();

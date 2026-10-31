@@ -6,7 +6,8 @@ namespace Fixtura;
 
 /// <summary>
 /// A SQL Server for one fixture. Each database it names gets the fixture's prefix, and dispose drops every database with
-/// that prefix, so tests never share data and leave nothing behind.
+/// that prefix, so tests never share data and leave nothing behind, unless
+/// <see cref="SqlServerOptions.ReuseDatabases"/> hands them, reset, to the next fixture of the same type.
 /// </summary>
 public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 {
@@ -21,8 +22,13 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
     // One reachability check per server per process, so an unreachable server costs the ready timeout once, not per fixture.
     private static readonly ConcurrentDictionary<string, Lazy<Task<string?>>> Checks = new();
 
+    // Prefixes whose databases a fixture handed back, reset, for the next fixture of the same type on the same server.
+    private static readonly ConcurrentDictionary<(string Server, Type Fixture), ConcurrentBag<string>> Pooled = new();
+    private static int _dropsPooledAtExit;
+
     private string? _server;
     private string _prefix = "";
+    private (string Server, Type Fixture)? _poolKey;
 
     /// <summary>
     /// The connection string for this fixture's database by that name. Call it inside a swap's lambda: the server is only
@@ -38,7 +44,8 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
 
     /// <summary>
     /// Takes the prefix the fixture passes, such as <c>fixtura_1a2b3c4d</c>, and throws for any other: dispose drops every
-    /// database whose name starts with it.
+    /// database whose name starts with it. With <see cref="SqlServerOptions.ReuseDatabases"/>, it takes the databases an
+    /// earlier fixture of the same type handed back, when there are some.
     /// </summary>
     public async Task<TestResourceStatus> ProvisionAsync(TestResourceContext context)
     {
@@ -60,6 +67,17 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
         if (server is not null && reason is null)
         {
             _server = server;
+            if (options.ReuseDatabases && context.FixtureType is { } fixture)
+            {
+                _poolKey = (server, fixture);
+                if (Pooled.GetOrAdd((server, fixture), _ => []).TryTake(out string? pooled))
+                {
+                    _prefix = pooled;
+                }
+
+                DropPooledAtExit();
+            }
+
             string pattern = LeftoverPattern(namePrefix);
             await Sweeps.GetOrAdd((server, pattern), _ => new Lazy<Task>(() => SweepLeftoversAsync(server, pattern, LeftoverAge))).Value.WaitAsync(context.CancellationToken);
             return TestResourceStatus.Ready;
@@ -111,8 +129,50 @@ public sealed class SqlServerResource(SqlServerOptions options) : ITestResource
             return;
         }
 
+        if (_poolKey is { } key)
+        {
+            // A set that won't reset, such as one whose KeepOnReset no longer matches, is dropped instead of handed on.
+            try
+            {
+                await ResetAsync(CancellationToken.None);
+                Pooled[key].Add(_prefix);
+                return;
+            }
+            catch (Exception exception) when (exception is SqlException or InvalidOperationException)
+            {
+            }
+        }
+
         SqlConnection.ClearAllPools();
         await DropDatabasesAsync(_server, Like(_prefix) + "[_]%", olderThan: TimeSpan.Zero, keepInUse: false);
+    }
+
+    // Once per process. ProcessExit can't wait on async work, so the drop blocks; a killed process's are swept later.
+    private static void DropPooledAtExit()
+    {
+        if (Interlocked.Exchange(ref _dropsPooledAtExit, 1) == 0)
+        {
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => DropPooledAsync().GetAwaiter().GetResult();
+        }
+    }
+
+    // Housekeeping only, like the sweep: a drop that fails must not fail the test run.
+    internal static async Task DropPooledAsync()
+    {
+        SqlConnection.ClearAllPools();
+        foreach (KeyValuePair<(string Server, Type Fixture), ConcurrentBag<string>> pool in Pooled)
+        {
+            while (pool.Value.TryTake(out string? prefix))
+            {
+                try
+                {
+                    await DropDatabasesAsync(pool.Key.Server, Like(prefix) + "[_]%", TimeSpan.Zero, keepInUse: false);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
     }
 
     private bool IsRequired()

@@ -8,14 +8,19 @@ using SampleApp.Inventory;
 namespace Fixtura.Tests.Integration.Sql;
 
 // Every SQL-backed host shape shares this one feature: a test server, one database per context, schemas created at start.
-public sealed class SampleSqlDatabases : ITestHostFeature
+public sealed class SampleSqlDatabases(bool reuseDatabases) : ITestHostFeature
 {
+    public SampleSqlDatabases() : this(false)
+    {
+    }
+
     public void Configure(TestHostBuilder host)
     {
         SqlServerResource sql = host.AddSqlServer(new SqlServerOptions
         {
             Source = SqlServerSource.EnvironmentVariableOrLocalDb("FIXTURA_SQLSERVER"),
             RequiredWhenVariableIsTrue = "FIXTURA_SQLSERVER_REQUIRED",
+            ReuseDatabases = reuseDatabases,
 
             // A stopped LocalDB instance takes several seconds to start on the first connection.
             ReadyTimeout = TimeSpan.FromSeconds(15)

@@ -68,6 +68,8 @@ Fixtura.TestLogs
 Fixtura.TestLogs.Current.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.Logging.Testing.FakeLogRecord!>!
 Fixtura.TestResourceContext
 Fixtura.TestResourceContext.CancellationToken.get -> System.Threading.CancellationToken
+Fixtura.TestResourceContext.FixtureType.get -> System.Type?
+Fixtura.TestResourceContext.FixtureType.init -> void
 Fixtura.TestResourceContext.NamePrefix.get -> string!
 Fixtura.TestResourceContext.TestResourceContext(string! namePrefix, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
 Fixtura.TestResourceStatus

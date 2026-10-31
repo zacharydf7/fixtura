@@ -10,4 +10,10 @@ public sealed class TestResourceContext(string namePrefix, CancellationToken can
 
     /// <summary>Cancelled when the test run is.</summary>
     public CancellationToken CancellationToken { get; } = cancellationToken;
+
+    /// <summary>
+    /// The type of the fixture being provisioned, for a resource that keeps something for the next fixture of the same
+    /// shape, such as a pool of databases; null outside a fixture.
+    /// </summary>
+    public Type? FixtureType { get; init; }
 }

@@ -28,6 +28,25 @@ it. The app creates the database, for example by running its migrations or `Ensu
 Databases that a killed test run left behind are dropped once they're a day old and, when the login can view
 server state, nobody is connected to them.
 
+## Reusing databases across fixtures
+
+Each fixture creates its databases, and the app creates their schema, which takes a second or two per fixture. When many
+test classes each get their own instance of one fixture class, `ReuseDatabases = true` hands a fixture's databases on
+instead of dropping them:
+
+```csharp
+SqlServerResource sql = host.AddSqlServer(new SqlServerOptions { ReuseDatabases = true });
+```
+
+- When a fixture is done, its databases are reset, as `ResetDataAsync` would, and kept for the next fixture of the same
+  type on the same server. That fixture's host starts on databases the app has already created.
+- Only a fixture of the same type takes them, so a fixture whose app is set up differently never gets another's schema.
+- Data the app only adds when it creates a database, such as EF Core's `HasData` rows, is gone from a reused one, because
+  the reset emptied it and the database already exists. Name those tables in `KeepOnReset`, or seed on every start with
+  `SeedOnReset`.
+- They're dropped when the test process exits. Those of a process that was killed are dropped a day later, like any
+  leftover.
+
 ## When there's no server
 
 Without a reachable server, every test that uses the fixture is skipped with the reason. Set the

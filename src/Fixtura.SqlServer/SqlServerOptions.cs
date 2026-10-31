@@ -24,4 +24,11 @@ public sealed class SqlServerOptions
     /// kept.
     /// </summary>
     public IReadOnlyList<string> KeepOnReset { get; init; } = [];
+
+    /// <summary>
+    /// Hands a fixture's databases, reset, to the next fixture of the same type instead of dropping them, and drops them
+    /// when the test process exits. The next host then starts on databases the app has already created, which saves
+    /// seconds per fixture where many test classes each get their own instance of one fixture class. False unless set.
+    /// </summary>
+    public bool ReuseDatabases { get; init; }
 }
