@@ -53,6 +53,7 @@ builder.Services.AddAuthorization();
 builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddControllers()
     .AddJsonOptions(json => json.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
+builder.Services.AddRazorPages();
 
 WebApplication app = builder.Build();
 
@@ -103,6 +104,7 @@ app.MapPost("/returns", (ReturnRequest request) => string.IsNullOrWhiteSpace(req
     ? Results.ValidationProblem(new Dictionary<string, string[]> { ["Reason"] = ["Say why the parcel is going back."] })
     : Results.Ok());
 app.MapControllers();
+app.MapRazorPages();
 
 if (reportsEnabled)
 {

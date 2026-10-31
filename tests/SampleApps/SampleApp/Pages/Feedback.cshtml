@@ -1,0 +1,16 @@
+@page
+@model SampleApp.Pages.FeedbackModel
+@if (Model.Thanks is not null)
+{
+    <p>@Model.Thanks</p>
+}
+<form method="post">
+    <input asp-for="Name" />
+    <textarea asp-for="Message"></textarea>
+    <input asp-for="Subscribe" />
+    <button type="submit">Send</button>
+</form>
+<form method="post" asp-page-handler="Clear">
+    <input name="Reason" />
+    <button type="submit">Clear</button>
+</form>

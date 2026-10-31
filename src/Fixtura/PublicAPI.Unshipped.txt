@@ -15,6 +15,7 @@ Fixtura.FakedClientResilience.Keep = 0 -> Fixtura.FakedClientResilience
 Fixtura.FakedClientResilience.Remove = 1 -> Fixtura.FakedClientResilience
 Fixtura.FakeResponse
 Fixtura.FakeResponse.After(System.TimeSpan delay) -> Fixtura.FakeResponse!
+Fixtura.HttpClientForms
 Fixtura.HttpFake.Respond(System.Net.Http.HttpMethod! method, string! path, Fixtura.FakeResponse! response, params Fixtura.FakeResponse![]! more) -> Fixtura.HttpFake!
 Fixtura.HttpFake.Respond(System.Net.Http.HttpMethod! method, string! path, System.Func<Fixtura.FakeHttpRequest!, bool>! when, Fixtura.FakeResponse! response, params Fixtura.FakeResponse![]! more) -> Fixtura.HttpFake!
 Fixtura.HttpFake.VerifyAllResponsesUsed() -> void
@@ -98,6 +99,7 @@ Fixtura.TestUsers.Scheme.set -> void
 static Fixtura.FakeResponse.ConnectionFailure() -> Fixtura.FakeResponse!
 static Fixtura.FakeResponse.Status(System.Net.HttpStatusCode status, object? json = null) -> Fixtura.FakeResponse!
 static Fixtura.FakeResponse.Timeout() -> Fixtura.FakeResponse!
+static Fixtura.HttpClientForms.SubmitFormAsync(this System.Net.Http.HttpClient! client, string! path, object! values) -> System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage!>!
 static Fixtura.TestResourceStatus.Ready.get -> Fixtura.TestResourceStatus!
 static Fixtura.TestResourceStatus.Unavailable(string! reason) -> Fixtura.TestResourceStatus!
 virtual Fixtura.TestHost<TProgram>.OnDisposingAsync() -> System.Threading.Tasks.ValueTask

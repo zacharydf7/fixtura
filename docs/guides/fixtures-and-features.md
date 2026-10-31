@@ -105,6 +105,24 @@ Instead of a `Task.Delay`, wait for the result:
 - For a request the app sends through a faked client, `WaitForRequestAsync` on the fake does the same; see
   [Faking outbound HTTP](http-fakes.md).
 
+## Submitting forms
+
+Razor Pages and MVC forms carry an antiforgery token, which a test would otherwise scrape from the page.
+`SubmitFormAsync` does what a browser does:
+
+[!code-csharp[](../samples/Bookshop.Tests/GuideSnippets.cs#submit-forms)]
+
+- It opens the page, then posts the form that has a field for every value, such as the edit form rather than a layout's
+  sign-out form. When none or several fit, or a value's name is misspelled, it throws, listing each form's action and
+  fields.
+- The form's other fields keep what a browser would send: a prefilled input's value, a checked checkbox, the selected
+  option and the antiforgery token. So an edit test gives only the fields it changes, and the client's cookies carry
+  the token's cookie.
+- Values are an anonymous object, a dictionary, or name and value pairs. A list becomes the field repeated, and dates
+  are written in ISO 8601, as a browser's date inputs send them.
+- The form posts to its own action, such as a Razor Pages handler's `?handler=Delete`, and the response is the app's
+  answer to that post.
+
 ## Client options
 
 Most tests use the default client. `TestClientOptions` changes it for the few that need something else:

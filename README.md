@@ -71,6 +71,11 @@ public class OrderTests(ApiFixture api) : IClassFixture<ApiFixture>
 `Errors`. Both throw showing the body when it isn't what the test expects. They read with the minimal APIs' options;
 an app whose JSON comes from MVC controllers sets `host.Json = AppJson.Controllers`.
 
+`await client.SubmitFormAsync("/Books/Create", new { Title = "Dune" })` opens a Razor Pages or MVC page and posts the
+form with a field for every value, to the form's own action. Its other fields keep what a browser would send, such as
+prefilled values, checked checkboxes and the antiforgery token, so an edit test gives only what it changes. It throws,
+listing the page's forms, when no one form fits.
+
 ## Features
 
 Move setup that several fixtures share into a feature. Adding the same feature twice runs it once, so features can build

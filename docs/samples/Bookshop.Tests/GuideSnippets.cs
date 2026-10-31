@@ -152,6 +152,14 @@ internal static class GuideSnippets
         // </controllers-json>
     }
 
+    public static async Task SubmitForms(HttpClient client)
+    {
+        // <submit-forms>
+        HttpResponseMessage response = await client.SubmitFormAsync("/Books/Create", new { Title = "Dune", Price = 9.99m });
+        // </submit-forms>
+        _ = response;
+    }
+
     public static async Task ChangeSettings(TestHost<Program> shop)
     {
         // <change-settings>
