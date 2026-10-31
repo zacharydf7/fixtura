@@ -27,11 +27,12 @@ dotnet add package Fixtura.PostgreSql
 dotnet add package Fixtura.PostgreSql.Testcontainers
 dotnet add package Fixtura.SignalR
 dotnet add package Fixtura.Grpc
+dotnet add package Fixtura.Playwright
 ```
 
 `Fixtura` is the core. Add the others when the app uses EF Core, when tests need a relational database without a
 server, when they need a real SQL Server or PostgreSQL, when that server should run in Docker, and when tests talk to
-the app's SignalR hubs or gRPC services.
+the app's SignalR hubs or gRPC services, or open its pages in a browser.
 
 ## A fixture per host shape
 
@@ -295,6 +296,19 @@ var inventory = new Inventory.InventoryClient(channel);
 `Fixtura.Grpc` returns a channel through the fixture's own handler, signed in as the user, for the client the gRPC
 tooling generated. It runs on the in-memory test server; Kestrel serves plain-HTTP gRPC only to an app whose endpoints
 speak HTTP/2.
+
+### Browser tests
+
+```csharp
+host.AddPlaywright(new PlaywrightOptions { RequiredWhenVariableIsTrue = "CI" });   // in Configure
+
+IPage page = await api.OpenPageAsync("/account", TestUser.Named("ann"));
+```
+
+`Fixtura.Playwright` runs the app on Kestrel and launches the browser once per fixture. Each page gets a browser context
+of its own, signed in by the app's cookie or a bearer token, and `ResetDataAsync` closes them. Install the browser with
+the `playwright.ps1` in the test project's build output; without it the fixture's tests skip, and with the variable set,
+as in CI, they fail.
 
 ## Faking outbound HTTP
 

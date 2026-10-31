@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Playwright for Fixtura test hosts: the app on Kestrel and a browser page already signed in as a test user through the app's own authentication, launched once per fixture, with the pages each test opens closed by ResetDataAsync. Without the browser installed the fixture's tests skip with the reason; with the "required" variable set, as in CI, they fail.</Description>
+    <!-- Ships the doc comments for IntelliSense. Comments describe only what needs explaining, so a member or parameter
+         without one doesn't fail the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <!-- Not released yet, so there is no earlier version to validate against. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fixtura\Fixtura.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- An old version, since each version installs its own browser builds and a newer one than the consumer's would
+         make it install them again; the tests run on this one. -->
+    <PackageReference Include="Microsoft.Playwright" Version="1.50.0" />
+  </ItemGroup>
+
+</Project>

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
 
 namespace Bookshop.Tests;
 
@@ -158,6 +159,16 @@ internal static class GuideSnippets
         HttpResponseMessage response = await client.SubmitFormAsync("/Books/Create", new { Title = "Dune", Price = 9.99m });
         // </submit-forms>
         _ = response;
+    }
+
+    public static async Task BrowserTests(TestHostBuilder host, ShopFixture shop)
+    {
+        // <playwright>
+        host.AddPlaywright(new PlaywrightOptions { RequiredWhenVariableIsTrue = "CI" });   // in Configure
+
+        IPage page = await shop.OpenPageAsync("/account", TestUser.Named("ann").WithRoles("Customer"));
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
+        // </playwright>
     }
 
     public static async Task ChangeSettings(TestHost<Program> shop)

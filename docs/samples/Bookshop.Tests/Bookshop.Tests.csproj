@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Fixtura\Fixtura.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.EntityFrameworkCore\Fixtura.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\..\src\Fixtura.Playwright\Fixtura.Playwright.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.PostgreSql.Testcontainers\Fixtura.PostgreSql.Testcontainers.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.SignalR\Fixtura.SignalR.csproj" />
     <ProjectReference Include="..\..\..\src\Fixtura.Sqlite\Fixtura.Sqlite.csproj" />

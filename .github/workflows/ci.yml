@@ -40,6 +40,13 @@ jobs:
       - name: Require PostgreSQL
         if: runner.os == 'Linux'
         run: echo "FIXTURA_POSTGRES_REQUIRED=true" >> "$GITHUB_ENV"
+      # Linux installs Chromium, so a broken browser setup fails CI; on Windows the browser tests skip.
+      - name: Install Chromium
+        if: runner.os == 'Linux'
+        run: |
+          dotnet build tests/Fixtura.Tests.Integration -c Release
+          pwsh tests/Fixtura.Tests.Integration/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+          echo "FIXTURA_PLAYWRIGHT_REQUIRED=true" >> "$GITHUB_ENV"
       # The test projects share one SQL Server, which creates databases one at a time: run together, they time out.
       - run: dotnet test -c Release --max-parallel-test-modules 1
       # Packing on every run, with package validation on, finds a packaging problem before a release does.

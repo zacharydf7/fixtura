@@ -20,6 +20,8 @@
     href: logs.md
   - name: SignalR
     href: signalr.md
+  - name: Browser tests
+    href: browser-tests.md
   - name: Kestrel and per-test overrides
     href: kestrel-and-overrides.md
 - name: Data

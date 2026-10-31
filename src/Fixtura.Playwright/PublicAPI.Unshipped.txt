@@ -1,0 +1,23 @@
+#nullable enable
+Fixtura.PlaywrightBrowser
+Fixtura.PlaywrightBrowser.Chromium = 0 -> Fixtura.PlaywrightBrowser
+Fixtura.PlaywrightBrowser.Firefox = 1 -> Fixtura.PlaywrightBrowser
+Fixtura.PlaywrightBrowser.WebKit = 2 -> Fixtura.PlaywrightBrowser
+Fixtura.PlaywrightOptions
+Fixtura.PlaywrightOptions.Browser.get -> Fixtura.PlaywrightBrowser
+Fixtura.PlaywrightOptions.Browser.init -> void
+Fixtura.PlaywrightOptions.Headless.get -> bool
+Fixtura.PlaywrightOptions.Headless.init -> void
+Fixtura.PlaywrightOptions.PlaywrightOptions() -> void
+Fixtura.PlaywrightOptions.RequiredWhenVariableIsTrue.get -> string?
+Fixtura.PlaywrightOptions.RequiredWhenVariableIsTrue.init -> void
+Fixtura.PlaywrightResource
+Fixtura.PlaywrightResource.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Fixtura.PlaywrightResource.PlaywrightResource(Fixtura.PlaywrightOptions! options) -> void
+Fixtura.PlaywrightResource.ProvisionAsync(Fixtura.TestResourceContext! context) -> System.Threading.Tasks.Task<Fixtura.TestResourceStatus!>!
+Fixtura.PlaywrightResource.ResetAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Fixtura.PlaywrightTestHostExtensions
+Fixtura.PlaywrightTestHostExtensions.extension<TProgram>(Fixtura.TestHost<TProgram!>!)
+Fixtura.PlaywrightTestHostExtensions.extension<TProgram>(Fixtura.TestHost<TProgram!>!).OpenPageAsync(string! path, Fixtura.TestUser? user = null) -> System.Threading.Tasks.Task<Microsoft.Playwright.IPage!>!
+static Fixtura.PlaywrightTestHostExtensions.AddPlaywright(this Fixtura.TestHostBuilder! host, Fixtura.PlaywrightOptions? options = null) -> Fixtura.PlaywrightResource!
+static Fixtura.PlaywrightTestHostExtensions.OpenPageAsync<TProgram>(this Fixtura.TestHost<TProgram!>! api, string! path, Fixtura.TestUser? user = null) -> System.Threading.Tasks.Task<Microsoft.Playwright.IPage!>!

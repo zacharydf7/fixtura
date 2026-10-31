@@ -118,6 +118,7 @@ or observer to write.</p>
 <li><a href="guides/http-fakes.md">Faking outbound HTTP</a></li>
 <li><a href="guides/logs.md">The app's logs</a></li>
 <li><a href="guides/signalr.md">SignalR</a></li>
+<li><a href="guides/browser-tests.md">Browser tests</a></li>
 <li><a href="guides/kestrel-and-overrides.md">Kestrel and per-test overrides</a></li>
 </ul>
 </div>
@@ -175,6 +176,10 @@ or observer to write.</p>
 <div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura.Grpc">Fixtura.Grpc</a>
 <p>A gRPC channel signed in as a test user, for the clients the gRPC tooling generates.</p>
+</div>
+<div class="fx-package">
+<a href="https://www.nuget.org/packages/Fixtura.Playwright">Fixtura.Playwright</a>
+<p>Browser pages signed in as a test user, on the app running on Kestrel.</p>
 </div>
 <div class="fx-package">
 <a href="https://www.nuget.org/packages/Fixtura.SignalR">Fixtura.SignalR</a>
